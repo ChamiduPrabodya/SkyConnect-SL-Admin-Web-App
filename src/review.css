@@ -1,0 +1,74 @@
+.review-overlay{position:fixed;inset:0;z-index:110;display:flex;align-items:center;justify-content:center;padding:24px;background:#10203380;backdrop-filter:blur(3px)}
+.review-modal{display:flex;flex-direction:column;width:min(760px,100%);max-height:min(90vh,850px);overflow:hidden;background:#fff;border:1px solid #e6ebf1;border-radius:16px;box-shadow:0 24px 80px #10203340;animation:review-enter .18s ease-out}
+.review-modal-header{padding:23px 26px 19px;border-bottom:1px solid #edf1f5;background:linear-gradient(135deg,#fff 55%,#f5f9ff)}
+.review-eyebrow{display:flex;align-items:center;justify-content:space-between}
+.review-eyebrow .eyebrow{margin:0;color:#75849a}
+.review-close{width:34px;height:34px;display:grid;place-items:center;border:1px solid #e6ebf1;border-radius:9px;background:#fff;color:#66768a}
+.review-partner-heading{display:flex;align-items:center;gap:13px;margin-top:16px}
+.review-partner-heading .avatar{width:45px;height:45px;border-radius:13px;font-size:12px}
+.review-partner-heading>div:nth-child(2){flex:1;min-width:0}
+.review-partner-heading h2{margin:0;color:#1c2e45;font:800 20px Manrope,sans-serif;letter-spacing:-.5px}
+.review-partner-heading p{margin:5px 0 0;color:#8390a0;font-size:11px}
+.review-modal-body{overflow:auto;padding:20px 26px 24px}
+.review-section{padding:0 0 18px;margin-bottom:18px;border-bottom:1px solid #edf1f5}
+.review-section h3{display:flex;align-items:center;gap:8px;margin:0 0 13px;color:#2d4058;font:700 12px Manrope,sans-serif}
+.review-section h3 svg{color:#5684c6}
+.review-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.review-field{min-width:0;padding:11px 12px;border:1px solid #edf1f5;border-radius:9px;background:#fbfcfe}
+.review-field>span{display:block;margin-bottom:5px;color:#8b97a6;font-size:9px;font-weight:600;letter-spacing:.3px;text-transform:uppercase}
+.review-field>strong{display:block;overflow-wrap:anywhere;color:#33465d;font-size:11px;font-weight:600;line-height:1.5}
+.review-field-wide{grid-column:1/-1}
+.review-website{display:flex!important;align-items:center;gap:6px}
+.review-website svg{color:#6c88ae;flex-shrink:0}
+.review-helper{margin:10px 0 0;color:#8794a4;font-size:9px;line-height:1.6}
+.review-submitted{display:flex;align-items:center;gap:7px;margin:0 0 14px;color:#788698;font-size:10px}
+.review-submitted svg{color:#7893b6}
+.review-submitted strong{color:#465a72;font-weight:600}
+.review-demo-note{display:flex;align-items:flex-start;gap:8px;padding:11px 12px;border:1px solid #f0e5ca;border-radius:8px;background:#fffaf0;color:#8b7248;font-size:9px;line-height:1.6}
+.review-demo-note svg{flex-shrink:0;margin-top:1px}
+.review-modal-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 26px;border-top:1px solid #edf1f5;background:#fcfdff}
+.review-modal-footer>div{display:flex;align-items:center;gap:8px}
+.review-modal-footer .button{min-height:37px}
+.review-reject{color:#c76065;background:#fff;border:1px solid #f0d8da}
+.review-reject:hover{background:#fff6f6}
+.airline-route-section>.review-helper{margin:-4px 0 14px}
+.route-count{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:6px;background:#eaf1ff;color:#4779e8;font-size:10px}
+.airline-route-card{overflow:hidden;border:1px solid #e4eaf2;border-radius:12px;margin-top:14px}
+.airline-route-header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 15px;background:#f5f8fc;border-bottom:1px solid #e4eaf2;font-size:11px;color:#33465d}
+.airline-route-header>span{color:#6b7f98;font-size:10px}
+.route-overview{display:grid;grid-template-columns:minmax(0,1fr) 100px minmax(0,1fr);gap:12px;padding:19px 15px;background:#f9fbfe;border-bottom:1px solid #edf1f5}
+.route-overview>div:last-child{text-align:right}
+.route-overview>div>span{display:block;color:#7d8da1;font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.route-overview>div>strong{display:block;margin-top:7px;font:800 25px Manrope,sans-serif;color:#244b78}
+.route-overview p{margin:5px 0 0;color:#78899e;font-size:10px;line-height:1.5;overflow-wrap:anywhere}
+.route-overview .route-direction{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;color:#5684c6;text-align:center}
+.route-direction>span{white-space:nowrap;font-size:8px!important}
+.route-detail-section{padding:16px 15px;border-bottom:1px solid #edf1f5}
+.route-detail-section:last-child{border-bottom:0}
+.route-detail-section h4{display:flex;align-items:center;gap:7px;margin:0 0 11px;color:#435a75;font-size:11px;font-weight:600}
+.route-detail-section h4 svg{color:#6d8caf}
+.route-fixed-note{display:flex;align-items:center;gap:6px;margin:10px 0 0;color:#6d829a;font-size:9px;line-height:1.6}
+.route-detail-section .review-helper{display:flex;align-items:center;gap:6px}
+.route-detail-section .review-helper svg,.route-fixed-note svg{flex-shrink:0}
+.route-cabin-table{overflow-x:auto;border:1px solid #edf1f5;border-radius:8px}
+.route-cabin-table table{min-width:370px}
+.route-cabin-table th,.route-cabin-table td{padding:11px 12px}
+.route-cabin-table thead th{border-top:0;font-size:8px}
+.route-cabin-table tbody th{background:transparent;color:#435a75;font-size:10px;font-weight:600;letter-spacing:0;border-top:0;border-bottom:1px solid #f0f3f7}
+.route-cabin-table tbody tr:last-child th{border-bottom:0}
+.route-empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:24px 14px;border:1px dashed #dce5ef;border-radius:10px;color:#7d8da1;font-size:10px;text-align:center}
+.route-empty strong{color:#435a75;font-size:11px}
+.hotel-review-facilities{display:flex;flex-wrap:wrap;gap:8px}
+.hotel-review-facilities>span{padding:7px 10px;border:1px solid #e1e9f3;border-radius:7px;background:#f5f8fc;color:#536b86;font-size:10px}
+.hotel-review-gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.hotel-review-photo{height:130px;overflow:hidden;border:1px solid #e1e9f3;border-radius:9px;background:#f5f8fc}
+.hotel-review-photo a{display:block;height:100%}
+.hotel-review-photo img{display:block;width:100%;height:100%;object-fit:cover}
+.hotel-review-photo>span{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;color:#7d8da1;font-size:10px}
+.review-document-list{display:flex;flex-wrap:wrap;gap:8px;list-style:none;padding:0;margin:12px 0 0}
+.review-document-list li{display:flex;align-items:center;gap:6px;padding:8px 10px;border:1px solid #e1e9f3;border-radius:7px;background:#f5f8fc;color:#536b86;font-size:10px;overflow-wrap:anywhere}
+@media(max-width:620px){.hotel-review-gallery{grid-template-columns:repeat(2,minmax(0,1fr))}.hotel-review-photo{height:115px}}
+@media(max-width:420px){.route-overview{grid-template-columns:minmax(0,1fr) 65px minmax(0,1fr);gap:8px;padding:15px 12px}.route-overview>div>span{font-size:7px}.route-overview>div>strong{font-size:22px}.route-overview p{font-size:9px}.route-detail-section{padding:14px 12px}.route-direction>span{font-size:7px!important}}
+@keyframes review-enter{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:620px){.review-overlay{padding:10px;align-items:flex-end}.review-modal{max-height:92vh;border-radius:15px 15px 10px 10px}.review-modal-header{padding:18px 17px 15px}.review-modal-body{padding:17px}.review-modal-footer{padding:13px 17px}.review-partner-heading h2{font-size:17px}.review-partner-heading .badge{margin-left:auto}.review-fields{gap:8px}.review-field{padding:9px}.review-modal-footer>div{gap:6px}.review-modal-footer .button{padding:9px 10px;font-size:10px}}
+@media(max-width:420px){.review-fields{grid-template-columns:1fr}.review-field-wide{grid-column:auto}.review-partner-heading{flex-wrap:wrap}.review-partner-heading .badge{margin-left:auto}.review-modal-footer{align-items:stretch;flex-direction:column-reverse}.review-modal-footer>button{width:100%}.review-modal-footer>div{width:100%}.review-modal-footer>div .button{flex:1}}

@@ -1,0 +1,20 @@
+.directory-categories{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:23px}
+.partner-review-sections{display:grid;gap:20px}
+.directory-category{min-width:0;padding:17px;text-align:left;border:1px solid #e4eaf2;border-radius:12px;background:#fff;color:#687a90;transition:border-color .16s,background .16s,box-shadow .16s}
+.directory-category:hover{border-color:#b9cceb;background:#fbfdff}
+.directory-category.selected{border-color:#6594e1;background:#f5f9ff;box-shadow:0 0 0 1px #6594e1}
+.directory-category-top{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:600;color:#435a75}
+.directory-category>strong{display:block;margin:13px 0 7px;font:800 27px Manrope,sans-serif;letter-spacing:-.7px;color:#213c60}
+.directory-category>small{display:block;color:#7d8da1;font-size:10px;line-height:1.5}
+.directory-section-title{display:flex;align-items:center;gap:8px}
+.directory-section-title svg{color:#5684c6;flex-shrink:0}
+.directory-users{display:flex;flex-direction:column;align-items:center;gap:10px;padding:45px 20px;text-align:center;color:#7d8da1}
+.directory-users h3{margin:0;color:#435a75;font:700 14px Manrope,sans-serif}
+.directory-users p{margin:0;font-size:11px;line-height:1.7}
+.app-shell[data-theme="dark"] .directory-category{border-color:#304258;background:#142131;color:#a2b4c8}
+.app-shell[data-theme="dark"] .directory-category:hover{border-color:#4a6583;background:#192b3e}
+.app-shell[data-theme="dark"] .directory-category.selected{border-color:#80adf0;background:#1b3048;box-shadow:0 0 0 1px #80adf0}
+.app-shell[data-theme="dark"] .directory-category-top,.app-shell[data-theme="dark"] .directory-category>strong,.app-shell[data-theme="dark"] .directory-users h3{color:#d1dce8}
+.app-shell[data-theme="dark"] .directory-category>small,.app-shell[data-theme="dark"] .directory-users{color:#a2b4c8}
+@media(max-width:900px){.directory-categories{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.directory-categories{gap:10px;margin-bottom:19px}.directory-category{padding:13px}.directory-category-top{gap:8px;font-size:11px}.directory-category>strong{font-size:24px}.directory-category>small{font-size:9px}.directory-filters .result-count{width:100%;margin-left:0}.directory-users{padding:32px 16px}}

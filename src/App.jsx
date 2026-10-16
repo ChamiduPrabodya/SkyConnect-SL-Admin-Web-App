@@ -1,30 +1,20 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   LayoutDashboard, Users, Building2, ClipboardCheck, Compass, ChartNoAxesCombined,
   Settings, Search, Bell, ChevronDown, Menu, X, ArrowUpRight, ArrowDownRight,
   MoreHorizontal, Plane, MapPin, Heart, Bookmark, Clock3, Check, XCircle,
   ExternalLink, Sparkles, SlidersHorizontal, Plus, Download, Filter, ShieldCheck,
-  CircleHelp, LogOut, Eye, CheckCircle2, AlertCircle
+  CircleHelp, LogOut, Eye, CheckCircle2, AlertCircle, Mail, Globe, CalendarDays, Moon, Sun
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { demoPartners, demoOffers, activity } from './data.js';
+import { demoPartners, demoOffers, demoDestinations, demoTravelPackages, activity } from './data.js';
+import CatalogPage from './CatalogPage.jsx';
+import OfferForm from './OfferForm.jsx';
+import AirlineRouteReview, { RouteField } from './AirlineRouteReview.jsx';
+import { AirlineProfile, HotelProfile, RegistrationDetails } from './PartnerProfiles.jsx';
 import { firebaseConfigured, db } from './firebase.js';
 import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 
-const navGroups = [
-  { label: 'WORKSPACE', items: [
-    { id: 'Overview', icon: LayoutDashboard },
-    { id: 'Partner verification', icon: ClipboardCheck, badge: '2' },
-    { id: 'Offers & experiences', icon: Compass },
-    { id: 'Users & partners', icon: Users },
-  ]},
-  { label: 'INSIGHTS', items: [
-    { id: 'Trend insights', icon: ChartNoAxesCombined },
-  ]},
-  { label: 'SYSTEM', items: [
-    { id: 'Settings', icon: Settings },
-  ]},
-];
 const chartData = [
   { name: 'Mon', visitors: 310, saves: 92 }, { name: 'Tue', visitors: 420, saves: 128 },
   { name: 'Wed', visitors: 365, saves: 105 }, { name: 'Thu', visitors: 510, saves: 164 },
@@ -36,6 +26,19 @@ const destinationData = [
   { name: 'Galle', value: 68, color: '#5d8df6' },
   { name: 'Sigiriya', value: 55, color: '#f1a85b' },
   { name: 'Mirissa', value: 44, color: '#9b7cf5' },
+];
+
+export function getPartnerSection(partner) {
+  const type = String(partner.type || '').trim().toLowerCase();
+  if (type === 'airline') return 'airline';
+  if (['tourism', 'hotel', 'activity'].includes(type)) return 'tourism';
+  if (type === 'user') return 'user';
+  return 'other';
+}
+
+const partnerSections = [
+  { id: 'airline', label: 'Airline Partners', icon: Plane, tint: 'tint-blue', description: 'Airline profiles, submitted routes, flight schedules, and cabin pricing.' },
+  { id: 'tourism', label: 'Tourism Partners', icon: Compass, tint: 'tint-green', description: 'Hotels, stays, tour operators, and activity providers.' },
 ];
 
 function Badge({ children, status }) {
@@ -61,10 +64,11 @@ export default function App() {
   const [page, setPage] = useState('Overview');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [partnerFilter, setPartnerFilter] = useState('All');
+  const [partnerFilter, setPartnerFilter] = useState('Pending');
   const [offerFilter, setOfferFilter] = useState('All');
   const [routeFilter, setRouteFilter] = useState('All');
-  const [partners, setPartners] = useState(demoPartners);
+  const [partners, setPartners] = useState(firebaseConfigured ? [] : demoPartners);
+  const [activePartner, setActivePartner] = useState(null);
   const [offers, setOffers] = useState(demoOffers);
   const [routes, setRoutes] = useState([
     {
@@ -92,8 +96,15 @@ export default function App() {
       status: 'approved',
     }
   ]);
+  const [destinations, setDestinations] = useState(demoDestinations);
+  const [travelPackages, setTravelPackages] = useState(demoTravelPackages);
   const [toast, setToast] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showOfferForm, setShowOfferForm] = useState(false);
+  const [theme, setTheme] = useState(() => window.localStorage.getItem('skyconnect-admin-theme') || 'light');
+  const pendingPartnerCount = partners.filter(partner => partner.status === 'Pending').length;
+
+  useEffect(() => { window.localStorage.setItem('skyconnect-admin-theme', theme); }, [theme]);
 
   const notify = (message) => { setToast(message); window.setTimeout(() => setToast(''), 2800); };
 
@@ -102,13 +113,11 @@ export default function App() {
     if (!firebaseConfigured || !db) return;
 
     const unsubPartners = onSnapshot(collection(db, 'partners'), (snap) => {
-      if (!snap.empty) {
-        const livePartners = snap.docs.map(docSnap => ({
-          id: docSnap.id,
-          ...docSnap.data(),
-        }));
-        setPartners(livePartners);
-      }
+      const livePartners = snap.docs.map(docSnap => ({
+        ...docSnap.data(),
+        id: docSnap.id,
+      }));
+      setPartners(livePartners);
     }, (err) => console.log('Admin Firestore partners error:', err));
 
     const unsubOffers = onSnapshot(collection(db, 'offers'), (snap) => {
@@ -140,6 +149,7 @@ export default function App() {
 
   const changePartnerStatus = async (id, status) => {
     setPartners(prev => prev.map(p => p.id === id ? { ...p, status } : p));
+    setActivePartner(null);
     notify(`Partner ${id} marked ${status.toLowerCase()}.`);
 
     if (firebaseConfigured && db) {
@@ -187,6 +197,7 @@ export default function App() {
       { id: 'Partner verification', icon: ClipboardCheck, badge: pendingPartnersCount > 0 ? String(pendingPartnersCount) : null },
       { id: 'Offers & experiences', icon: Compass, badge: pendingOffersCount > 0 ? String(pendingOffersCount) : null },
       { id: 'Flight routes', icon: Plane, badge: pendingRoutesCount > 0 ? String(pendingRoutesCount) : null },
+      { id: 'Destinations & packages', icon: MapPin },
       { id: 'Users & partners', icon: Users },
     ]},
     { label: 'INSIGHTS', items: [
@@ -197,6 +208,12 @@ export default function App() {
     ]},
   ], [pendingPartnersCount, pendingOffersCount, pendingRoutesCount]);
 
+  const createOffer = (offer) => {
+    const id = `OF-${Date.now().toString(36).toUpperCase()}`;
+    setOffers(prev => [{ ...offer, id, status: 'Pending', reach: '—' }, ...prev]);
+    setShowOfferForm(false);
+    notify('Offer added to the pending review list.');
+  };
   const filteredPartners = useMemo(() => partners.filter(p =>
     (partnerFilter === 'All' || p.status === partnerFilter) &&
     `${p.name || ''} ${p.type || ''} ${p.location || ''} ${p.id || ''}`.toLowerCase().includes(search.toLowerCase())
@@ -234,33 +251,35 @@ export default function App() {
   }, [routes, routeFilter, search]);
 
   const go = (id) => { setPage(id); setMobileOpen(false); setSearch(''); };
-  const nav = <><div className="brand"><div className="brand-mark"><Plane size={21}/></div><div><strong>SkyConnect<span>SL</span></strong><small>TRAVEL DISCOVERY</small></div><button className="close-nav" onClick={() => setMobileOpen(false)}><X size={19}/></button></div>
+  const nav = <><div className="brand"><img className="brand-mark" src="/logo.png" alt="SkyConnect logo" width="39" height="39"/><div><strong>SkyConnect<span>SL</span></strong><small>TRAVEL DISCOVERY</small></div><button className="close-nav" onClick={() => setMobileOpen(false)}><X size={19}/></button></div>
     <div className="workspace-chip"><span className="online-dot"/><span>Admin workspace</span><ChevronDown size={14}/></div>
     {dynamicNavGroups.map(group => <div className="nav-group" key={group.label}><div className="nav-label">{group.label}</div>{group.items.map(item => {const Icon = item.icon; return <button key={item.id} onClick={() => go(item.id)} className={`nav-item ${page === item.id ? 'active' : ''}`}><Icon size={18}/><span>{item.id}</span>{item.badge && <b className="nav-badge">{item.badge}</b>}</button>;})}</div>)}
     <div className="sidebar-bottom"><div className="help-card"><div className="help-icon"><CircleHelp size={17}/></div><strong>Need a hand?</strong><p>Explore the admin guide and tips.</p><button onClick={() => notify('Admin guide will be added in a future iteration.')}>Open help centre <ArrowUpRight size={13}/></button></div><button className="profile-row" onClick={() => go('Settings')}><Avatar initials="AD" color="navy"/><span><strong>SkyConnect Admin</strong><small>Administrator</small></span><MoreHorizontal size={18}/></button></div></>;
 
-  return <div className="app-shell">
+  return <div className="app-shell" data-theme={theme}>
     <aside className={`sidebar ${mobileOpen ? 'sidebar-open' : ''}`}>{nav}</aside>
     {mobileOpen && <div className="scrim" onClick={() => setMobileOpen(false)}/>}
     <main className="main-area">
-      <header className="topbar"><div className="topbar-left"><button className="mobile-menu" onClick={() => setMobileOpen(true)}><Menu size={21}/></button><div className="breadcrumbs">Workspace <span>/</span> <strong>{page}</strong></div></div><div className="topbar-actions"><div className="searchbox"><Search size={16}/><input aria-label="Search" placeholder="Search anything..." value={search} onChange={e => setSearch(e.target.value)}/><kbd>⌘ K</kbd></div><button className="icon-button notification-button" aria-label="Notifications" onClick={() => setShowNotifications(!showNotifications)}><Bell size={18}/><i/></button>{showNotifications && <div className="notification-pop"><strong>Notifications</strong><p>Pending reviews waiting for verification.</p><button onClick={() => {go('Flight routes');setShowNotifications(false)}}>Review flight schedules <ArrowUpRight size={13}/></button></div>}<div className="topbar-user"><Avatar initials="AD" color="navy" small/><span>Admin</span><ChevronDown size={14}/></div></div></header>
+      <header className="topbar"><div className="topbar-left"><button className="mobile-menu" onClick={() => setMobileOpen(true)}><Menu size={21}/></button><div className="breadcrumbs">Workspace <span>/</span> <strong>{page}</strong></div></div><div className="topbar-actions"><div className="searchbox"><Search size={16}/><input aria-label="Search" placeholder="Search anything..." value={search} onChange={e => setSearch(e.target.value)}/><kbd>⌘ K</kbd></div><button className="icon-button notification-button" aria-label="Notifications" onClick={() => setShowNotifications(!showNotifications)}><Bell size={18}/><i/></button>{showNotifications && <div className="notification-pop"><strong>Notifications</strong><p>{pendingPartnerCount} partner applications need review.</p><button onClick={() => {go('Partner verification');setShowNotifications(false)}}>Review applications <ArrowUpRight size={13}/></button></div>}<button className="theme-toggle" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} onClick={() => setTheme(current => current === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? <Sun size={17}/> : <Moon size={17}/>}</button><div className="topbar-user"><Avatar initials="AD" color="navy" small/><span>Admin</span><ChevronDown size={14}/></div></div></header>
       <div className="page-content">
-        {!firebaseConfigured && <div className="setup-banner"><div className="setup-banner-icon"><AlertCircle size={18}/></div><div><strong>Preview mode is active</strong><p>You're viewing sample data. Add your Firebase web config to <code>.env</code> when you're ready to connect real data.</p></div><span className="preview-pill">DEMO DATA</span></div>}
-        {page === 'Overview' && <Overview partners={partners} offers={offers} routes={routes} go={go} notify={notify} />}
-        {page === 'Partner verification' && <PartnerPage partners={filteredPartners} filter={partnerFilter} setFilter={setPartnerFilter} onStatus={changePartnerStatus} />}
-        {page === 'Offers & experiences' && <OffersPage offers={filteredOffers} filter={offerFilter} setFilter={setOfferFilter} onStatus={changeOfferStatus} notify={notify}/>}
+        {page === 'Overview' && <Overview partners={partners} offers={offers} routes={routes} go={go} notify={notify} onView={setActivePartner} />}
+        {page === 'Partner verification' && <PartnerPage partners={filteredPartners} filter={partnerFilter} setFilter={setPartnerFilter} onView={setActivePartner} />}
+        {page === 'Offers & experiences' && <OffersPage offers={filteredOffers} filter={offerFilter} setFilter={setOfferFilter} onStatus={changeOfferStatus} notify={notify} onAdd={() => setShowOfferForm(true)}/>}
         {page === 'Flight routes' && <RoutesPage routes={filteredRoutes} filter={routeFilter} setFilter={setRouteFilter} onStatus={changeRouteStatus} notify={notify}/>}
-        {page === 'Users & partners' && <DirectoryPage partners={partners} />}
+        {page === 'Destinations & packages' && <CatalogPage destinations={destinations} setDestinations={setDestinations} packages={travelPackages} setPackages={setTravelPackages} search={search} notify={notify}/>}
+        {page === 'Users & partners' && <DirectoryPage partners={partners} search={search} onView={setActivePartner} />}
         {page === 'Trend insights' && <InsightsPage />}
         {page === 'Settings' && <SettingsPage notify={notify}/>}
       </div>
       <footer className="footer"><span>© 2026 SkyConnect SL</span><span><span className="footer-dot"/> All systems operational <span className="footer-sep">·</span> Admin console v0.1</span></footer>
     </main>
+    {activePartner && <PartnerReviewModal partner={partners.find(p => p.id === activePartner.id) || activePartner} onClose={() => setActivePartner(null)} onStatus={changePartnerStatus}/>}
+    {showOfferForm && <OfferForm partners={partners.filter(partner => partner.status === 'Approved')} destinations={destinations} onClose={() => setShowOfferForm(false)} onSubmit={createOffer}/>}
     {toast && <div className="toast"><CheckCircle2 size={17}/>{toast}</div>}
   </div>;
 }
 
-function Overview({ partners, offers, routes, go, notify }) {
+function Overview({ partners, offers, routes, go, notify, onView }) {
   const pendingPartners = partners.filter(p => p.status === 'Pending').length;
   const pendingOffers = offers.filter(o => o.status === 'Pending').length;
   const pendingRoutes = (routes || []).filter(r => r.status === 'pending' || r.status === 'Pending').length;
@@ -269,31 +288,38 @@ function Overview({ partners, offers, routes, go, notify }) {
   return <>
     <SectionTitle eyebrow="SUNDAY, OCTOBER 11, 2026" title="Good afternoon, Admin ✨" description="Here's what's happening across your travel discovery platform today." action={<button className="button button-primary" onClick={() => go('Flight routes')}><Plus size={16}/> Manage schedules</button>}/>
     <div className="welcome-strip"><div className="welcome-copy"><div className="welcome-label"><Sparkles size={14}/> YOUR WEEKLY SNAPSHOT</div><h2>Make every journey <em>personal.</em></h2><p>Keep great local experiences visible, trusted and easy to discover.</p><button onClick={() => go('Trend insights')}>Explore travel insights <ArrowUpRight size={15}/></button></div><div className="welcome-art"><div className="sun"/><div className="mountain mountain-back"/><div className="mountain mountain-front"/><div className="art-plane"><Plane size={30}/></div><div className="art-cloud cloud-one"/><div className="art-cloud cloud-two"/></div></div>
-    <div className="metric-grid"><Metric label="Total users" value="2,840" change="12.8%" icon={Users} tint="tint-blue"/><Metric label="Verified partners" value={String(partners.filter(p=>p.status==='Approved').length + 36)} change="8.2%" icon={ShieldCheck} tint="tint-green"/><Metric label="Published offers" value={String(published + 124)} change="6.4%" icon={Compass} tint="tint-purple"/><Metric label="Pending reviews" value={String(totalPending)} change={`${pendingRoutes} routes · ${pendingOffers} offers`} direction="down" icon={Clock3} tint="tint-orange"/></div>
+    <div className="metric-grid"><Metric label="Total users" value="2,840" change="12.8%" icon={Users} tint="tint-blue"/><Metric label="Verified partners" value={String(partners.filter(p=>p.status==='Approved').length)} change="8.2%" icon={ShieldCheck} tint="tint-green"/><Metric label="Published offers" value={String(published + 124)} change="6.4%" icon={Compass} tint="tint-purple"/><Metric label="Pending reviews" value={String(totalPending)} change={`${pendingRoutes} routes · ${pendingOffers} offers`} direction="down" icon={Clock3} tint="tint-orange"/></div>
     <div className="dashboard-grid"><section className="panel engagement-panel"><div className="panel-heading"><div><h3>Discovery activity</h3><p>Explore views and saves across the platform</p></div><button className="select-like" onClick={() => notify('Showing the last 7 days.')}>Last 7 days <ChevronDown size={14}/></button></div><div className="chart-legend"><span><i className="legend-blue"/> Views <strong>3,345</strong></span><span><i className="legend-teal"/> Saves <strong>1,066</strong></span></div><div className="chart-wrap"><ResponsiveContainer width="100%" height="100%"><AreaChart data={chartData} margin={{top:10,right:4,left:-22,bottom:0}}><defs><linearGradient id="viewsFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#638cf6" stopOpacity={0.18}/><stop offset="95%" stopColor="#638cf6" stopOpacity={0}/></linearGradient></defs><CartesianGrid stroke="#edf1f6" vertical={false}/><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill:'#8994a5',fontSize:12}} dy={9}/><YAxis axisLine={false} tickLine={false} tick={{fill:'#8994a5',fontSize:11}}/><Tooltip contentStyle={{borderRadius:12,border:'1px solid #e8edf4',boxShadow:'0 8px 24px #14233a12'}}/><Area type="monotone" dataKey="visitors" name="Views" stroke="#638cf6" strokeWidth={2.5} fill="url(#viewsFill)"/><Area type="monotone" dataKey="saves" name="Saves" stroke="#2ab6a4" strokeWidth={2.5} fill="transparent"/></AreaChart></ResponsiveContainer></div></section>
     <section className="panel activity-panel"><div className="panel-heading"><div><h3>Recent activity</h3><p>Latest updates from your workspace</p></div><button className="text-button" onClick={() => go('Offers & experiences')}>View all <ArrowUpRight size={14}/></button></div><div className="activity-list">{activity.map((a,i)=><div className="activity-item" key={i}><div className={`activity-icon ${a.tone}`}>{a.icon==='partner'?<Building2 size={16}/>:a.icon==='offer'?<Compass size={16}/>:a.icon==='check'?<Check size={16}/>:<ChartNoAxesCombined size={16}/>}</div><div className="activity-text"><strong>{a.title}</strong><p>{a.detail}</p><small>{a.time}</small></div></div>)}</div></section></div>
-    <section className="panel table-panel"><div className="panel-heading"><div><h3>Partner applications</h3><p>Review partners before their content goes live</p></div><button className="text-button" onClick={() => go('Partner verification')}>View applications <ArrowUpRight size={14}/></button></div><PartnerTable partners={partners.filter(p=>p.status==='Pending').slice(0,3)} onStatus={(id,s)=>notify(`Demo: ${id} marked ${s.toLowerCase()}. Open Partner verification to manage statuses.`)} compact/></section>
+    <section className="panel table-panel"><div className="panel-heading"><div><h3>Partner applications</h3><p>Open each application to check its profile before deciding</p></div><button className="text-button" onClick={() => go('Partner verification')}>View applications <ArrowUpRight size={14}/></button></div><PartnerReviewTable partners={partners.filter(p=>p.status==='Pending').slice(0,3)} onView={onView} compact/></section>
     <div className="insight-note"><div className="insight-spark"><Sparkles size={18}/></div><div><strong>Travel discovery insight</strong><p>Nature and coastal experiences are strong categories to feature. Keep partner listings current so travelers see relevant local options.</p></div><button onClick={() => go('Trend insights')}>View insights <ArrowUpRight size={14}/></button></div>
   </>;
 }
 
-function PartnerPage({ partners, filter, setFilter, onStatus }) {
-  return <><SectionTitle eyebrow="PARTNER MANAGEMENT" title="Partner verification" description="Review applications and keep the SkyConnect community trusted." action={<button className="button button-secondary" onClick={()=>window.print()}><Download size={16}/> Export list</button>}/><div className="filter-row"><div className="filter-tabs">{['All','Pending','Approved','Rejected'].map(s=><button className={filter===s?'selected':''} key={s} onClick={()=>setFilter(s)}>{s}</button>)}</div><span className="result-count">{partners.length} partners</span><button className="button button-secondary button-small"><Filter size={14}/> Filters</button></div><section className="panel table-panel"><PartnerTable partners={partners} onStatus={onStatus}/></section><p className="page-footnote"><ShieldCheck size={14}/> Verify partner identity and submitted details before approving listings. Status changes in this starter are local demo state until connected to your backend.</p></>;
+export function PartnerPage({ partners, filter, setFilter, onView }) {
+  const sections = [...partnerSections];
+  if (partners.some(partner => getPartnerSection(partner) === 'other')) {
+    sections.push({ id: 'other', label: 'Other Partners', icon: Building2, description: 'Applications awaiting partner type classification.' });
+  }
+  return <>
+    <SectionTitle eyebrow="PARTNER MANAGEMENT" title="Partner verification" description="Review airline and tourism applications in separate sections." action={<button className="button button-secondary" onClick={()=>window.print()}><Download size={16}/> Export list</button>}/>
+    <div className="filter-row"><div className="filter-tabs" aria-label="Partner application status">{['Pending','Approved','Rejected','All'].map(s=><button type="button" className={filter===s?'selected':''} aria-pressed={filter===s} key={s} onClick={()=>setFilter(s)}>{s}</button>)}</div><span className="result-count">{partners.filter(partner => getPartnerSection(partner) !== 'user').length} partners</span></div>
+    <div className="partner-review-sections">
+      {sections.map(section => {
+        const Icon = section.icon;
+        const sectionPartners = partners.filter(partner => getPartnerSection(partner) === section.id);
+        return <section className="panel table-panel" key={section.id} aria-labelledby={`review-${section.id}-title`}>
+          <div className="panel-heading"><div><h3 className="directory-section-title" id={`review-${section.id}-title`}><Icon size={16}/>{section.label}</h3><p>{section.description}</p></div><span className="result-count">{sectionPartners.length} {sectionPartners.length === 1 ? 'application' : 'applications'}</span></div>
+          <PartnerReviewTable partners={sectionPartners} onView={onView}/>
+        </section>;
+      })}
+    </div>
+    <p className="page-footnote"><ShieldCheck size={14}/> Open an application to review its submitted information before approving or rejecting it.</p>
+  </>;
 }
 function PartnerTable({ partners, onStatus, compact=false }) {
   return <div className="table-scroll"><table><thead><tr><th>PARTNER</th><th>TYPE</th><th>LOCATION</th><th>STATUS</th><th>{compact?'ACTIONS':'SUBMITTED'}</th></tr></thead><tbody>{partners.map(p=><tr key={p.id}><td><div className="partner-cell"><Avatar initials={p.initials} color={p.color}/><div><strong>{p.name}</strong><small>{p.id}</small></div></div></td><td>{p.type}</td><td><span className="location-cell"><MapPin size={13}/>{p.location}</span></td><td><Badge status={p.status.toLowerCase()}>{p.status}</Badge></td><td>{p.status==='Pending'?<div className="row-actions"><button className="approve-btn" title="Approve" onClick={()=>onStatus(p.id,'Approved')}><Check size={15}/></button><button className="reject-btn" title="Reject" onClick={()=>onStatus(p.id,'Rejected')}><X size={15}/></button><button className="more-btn" title="View details" onClick={()=>onStatus(p.id,'Pending')}><Eye size={15}/></button></div>:compact?<span className="muted">—</span>:<button className="more-btn" onClick={()=>onStatus(p.id,'Pending')}><Eye size={15}/> Review again</button>}</td></tr>)}</tbody></table>{partners.length===0&&<div className="empty-state"><ClipboardCheck size={24}/><strong>No partners found</strong><span>Try another filter or search term.</span></div>}</div>;
 }
-function OffersPage({ offers, filter, setFilter, onStatus, notify }) {
-  return <><SectionTitle eyebrow="CONTENT CURATION" title="Offers & experiences" description="Manage the travel inspiration that travelers discover in their feed." action={<button className="button button-primary" onClick={()=>notify('Offer creation form will be connected to Backend 1 next.')}><Plus size={16}/> Add offer</button>}/><div className="filter-row"><div className="filter-tabs">{['All','Pending','Published','Rejected'].map(s=><button className={filter===s?'selected':''} key={s} onClick={()=>setFilter(s)}>{s}</button>)}</div><span className="result-count">{offers.length} listings</span></div><section className="panel table-panel"><div className="table-scroll"><table><thead><tr><th>OFFER / EXPERIENCE</th><th>CATEGORY</th><th>PARTNER</th><th>STATUS</th><th>REACH</th><th>ACTIONS</th></tr></thead><tbody>{offers.map(o=>{
-    const category = o.category || o.type || 'Experience';
-    const catLower = category.toLowerCase();
-    const title = o.title || o.name || 'Untitled Listing';
-    const partner = o.partner || o.partnerName || 'Tourism Partner';
-    const status = o.status || 'Pending';
-    return <tr key={o.id}><td><div className="offer-cell"><div className={`offer-thumb ${catLower}`}>{catLower==='beach'?<Compass size={18}/>:catLower==='nature'?<MapPin size={18}/>:catLower==='adventure'?<Plane size={18}/>:<Sparkles size={18}/>}</div><div><strong>{title}</strong><small>{o.id}</small></div></div></td><td><span className="category-chip">{category}</span></td><td>{partner}</td><td><Badge status={status.toLowerCase()}>{status}</Badge></td><td>{o.reach ?? '—'}</td><td>{status==='Pending'?<div className="row-actions"><button className="approve-btn" title="Publish" onClick={()=>onStatus(o.id,'Published')}><Check size={15}/></button><button className="reject-btn" title="Reject" onClick={()=>onStatus(o.id,'Rejected')}><X size={15}/></button></div>:<button className="more-btn" onClick={()=>notify(`Viewing ${title} is a demo action.`)}><Eye size={15}/></button>}</td></tr>;
-  })}</tbody></table>{offers.length===0&&<div className="empty-state">No offers match this filter.</div>}</div></section><div className="insight-note"><div className="insight-spark"><ShieldCheck size={18}/></div><div><strong>Keep content trustworthy</strong><p>Check descriptions, partner ownership, images and contact information before publishing an experience.</p></div></div></>;
-}
-
 function RoutesPage({ routes, filter, setFilter, onStatus, notify }) {
   return <>
     <SectionTitle
@@ -394,9 +420,96 @@ function RoutesPage({ routes, filter, setFilter, onStatus, notify }) {
     </div>
   </>;
 }
-function DirectoryPage({ partners }) {
-  const approved=partners.filter(p=>p.status==='Approved').length;
-  return <><SectionTitle eyebrow="COMMUNITY" title="Users & partners" description="A quick view of the SkyConnect community and partner network."/><div className="metric-grid"><Metric label="Registered users" value="2,840" change="12.8%" icon={Users} tint="tint-blue"/><Metric label="Total partners" value={String(partners.length)} change="Live demo list" icon={Building2} tint="tint-purple"/><Metric label="Approved partners" value={String(approved)} change="Verified" icon={ShieldCheck} tint="tint-green"/><Metric label="Pending partners" value={String(partners.filter(p=>p.status==='Pending').length)} change="Review needed" direction="down" icon={Clock3} tint="tint-orange"/></div><section className="panel table-panel"><div className="panel-heading"><div><h3>Partner directory</h3><p>Registered partners and their current status</p></div></div><PartnerTable partners={partners} onStatus={()=>{}}/></section><EmptyNote>User accounts and profile details will load here after Firebase/Backend 1 integration.</EmptyNote></>;
+
+function PartnerReviewTable({ partners, onView, compact=false }) {
+  return <div className="table-scroll"><table><thead><tr><th>PARTNER</th><th>TYPE</th><th>LOCATION</th><th>STATUS</th><th>{compact?'REVIEW':'APPLICATION'}</th></tr></thead><tbody>{partners.map(p=><tr key={p.id}><td><div className="partner-cell"><Avatar initials={p.initials} color={p.color}/><div><strong>{p.name}</strong><small>{p.id}</small></div></div></td><td>{p.type}</td><td><span className="location-cell"><MapPin size={13}/>{p.location}</span></td><td><Badge status={p.status.toLowerCase()}>{p.status}</Badge></td><td><button className="more-btn" onClick={()=>onView(p)}><Eye size={14}/>{p.status==='Pending'?'Review details':'View details'}</button></td></tr>)}</tbody></table>{partners.length===0&&<div className="empty-state"><ClipboardCheck size={24}/><strong>No partners found</strong><span>Try another filter or search term.</span></div>}</div>;
+}
+
+function ReviewField({ label, value }) {
+  return <RouteField label={label} value={value}/>;
+}
+
+export function PartnerReviewModal({ partner, onClose, onStatus }) {
+  return <div className="review-overlay" onMouseDown={onClose}>
+    <section className="review-modal" role="dialog" aria-modal="true" aria-labelledby="review-title" onMouseDown={event=>event.stopPropagation()}>
+      <div className="review-modal-header">
+        <div className="review-eyebrow"><span className="eyebrow">PARTNER APPLICATION · {partner.id}</span><button className="review-close" aria-label="Close review" onClick={onClose}><X size={18}/></button></div>
+        <div className="review-partner-heading"><Avatar initials={partner.initials} color={partner.color}/><div><h2 id="review-title">{partner.name}</h2><p>{partner.type} partner · {partner.location}</p></div><Badge status={partner.status.toLowerCase()}>{partner.status}</Badge></div>
+      </div>
+      <div className="review-modal-body">
+        <div className="review-section"><h3><Building2 size={16}/> Business profile</h3><div className="review-fields"><ReviewField label="Registered business name" value={partner.name}/><ReviewField label="Business registration" value={partner.businessRegistration}/><ReviewField label="Country" value={partner.country}/><ReviewField label="Business address" value={partner.location}/><div className="review-field review-field-wide"><span>About the business</span><strong>{partner.description || 'Not provided'}</strong></div></div></div>
+        <div className="review-section"><h3><Mail size={16}/> Contact details</h3><div className="review-fields"><ReviewField label="Contact person" value={partner.contactName}/><ReviewField label="Email" value={partner.email}/><ReviewField label="Phone" value={partner.phone}/><div className="review-field"><span>Website</span><strong className="review-website"><Globe size={13}/>{partner.website || 'Not provided'}</strong></div></div></div>
+        {partner.type==='Airline' && <><AirlineProfile partner={partner}/><AirlineRouteReview routes={partner.routes}/></>}
+        {partner.type==='Hotel' && <HotelProfile hotel={partner.hotelDetails}/>}
+        <RegistrationDetails partner={partner}/>
+        <div className="review-submitted"><CalendarDays size={15}/> Application submitted <strong>{partner.submittedAt || 'Date not provided'}</strong></div>
+        <div className="review-demo-note"><AlertCircle size={15}/> Sample application details for frontend preview. Document uploads and independent company verification are not represented in this demo.</div>
+      </div>
+      <div className="review-modal-footer"><button className="button button-secondary" onClick={onClose}>Close</button>{partner.status==='Pending' && <div><button className="button review-reject" onClick={()=>onStatus(partner.id,'Rejected')}><X size={15}/> Reject application</button><button className="button button-primary" onClick={()=>onStatus(partner.id,'Approved')}><Check size={15}/> Approve partner</button></div>}</div>
+    </section>
+  </div>;
+}
+function OffersPage({ offers, filter, setFilter, onStatus, notify, onAdd }) {
+  return <><SectionTitle eyebrow="CONTENT CURATION" title="Offers & experiences" description="Manage the travel inspiration that travelers discover in their feed." action={<button className="button button-primary" onClick={onAdd}><Plus size={16}/> Add offer</button>}/><div className="filter-row"><div className="filter-tabs">{['All','Pending','Published','Rejected'].map(s=><button className={filter===s?'selected':''} key={s} onClick={()=>setFilter(s)}>{s}</button>)}</div><span className="result-count">{offers.length} listings</span></div><section className="panel table-panel"><div className="table-scroll"><table><thead><tr><th>OFFER / EXPERIENCE</th><th>CATEGORY</th><th>PARTNER</th><th>STATUS</th><th>REACH</th><th>ACTIONS</th></tr></thead><tbody>{offers.map(o=>{
+    const category = o.category || o.type || 'Experience';
+    const catLower = category.toLowerCase();
+    const title = o.title || o.name || 'Untitled Listing';
+    const partner = o.partner || o.partnerName || 'Tourism Partner';
+    const status = o.status || 'Pending';
+    return <tr key={o.id}><td><div className="offer-cell"><div className={`offer-thumb ${catLower}`}>{catLower==='beach'?<Compass size={18}/>:catLower==='nature'?<MapPin size={18}/>:catLower==='adventure'?<Plane size={18}/>:<Sparkles size={18}/>}</div><div><strong>{title}</strong><small>{o.id}</small></div></div></td><td><span className="category-chip">{category}</span></td><td>{partner}</td><td><Badge status={status.toLowerCase()}>{status}</Badge></td><td>{o.reach ?? '—'}</td><td>{status==='Pending'?<div className="row-actions"><button className="approve-btn" title="Publish" onClick={()=>onStatus(o.id,'Published')}><Check size={15}/></button><button className="reject-btn" title="Reject" onClick={()=>onStatus(o.id,'Rejected')}><X size={15}/></button></div>:<button className="more-btn" onClick={()=>notify(`Viewing ${title} is a demo action.`)}><Eye size={15}/></button>}</td></tr>;
+  })}</tbody></table>{offers.length===0&&<div className="empty-state">No offers match this filter.</div>}</div></section><div className="insight-note"><div className="insight-spark"><ShieldCheck size={18}/></div><div><strong>Keep content trustworthy</strong><p>Check descriptions, partner ownership, images and contact information before publishing an experience.</p></div></div></>;
+}
+export function DirectoryPage({ partners, search = '', onView }) {
+  const [category, setCategory] = useState('airline');
+  const [status, setStatus] = useState('All');
+  const groups = [
+    ...partnerSections,
+    { id: 'user', label: 'Users', icon: Users, tint: 'tint-orange', description: 'Traveler accounts and user profiles.' },
+  ];
+  const belongsToGroup = (partner, group) => getPartnerSection(partner) === group.id;
+  const activeGroup = groups.find(group => group.id === category);
+  const groupPartners = partners.filter(partner => belongsToGroup(partner, activeGroup));
+  const query = search.trim().toLowerCase();
+  const visiblePartners = groupPartners.filter(partner =>
+    (status === 'All' || partner.status === status) &&
+    [partner.name, partner.id, partner.location, partner.email, partner.iata || partner.iataCode, partner.hotelDetails?.type, partner.type, activeGroup.label]
+      .filter(Boolean).join(' ').toLowerCase().includes(query)
+  );
+  const ActiveIcon = activeGroup.icon;
+  const selectCategory = id => { setCategory(id); setStatus('All'); };
+  const handleCategoryKey = event => {
+    const currentIndex = groups.findIndex(group => group.id === category);
+    let nextIndex;
+    if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % groups.length;
+    else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + groups.length) % groups.length;
+    else if (event.key === 'Home') nextIndex = 0;
+    else if (event.key === 'End') nextIndex = groups.length - 1;
+    else return;
+    event.preventDefault();
+    selectCategory(groups[nextIndex].id);
+    event.currentTarget.parentElement.querySelectorAll('[role="tab"]')[nextIndex].focus();
+  };
+
+  return <>
+    <SectionTitle eyebrow="COMMUNITY" title="Users & partners" description="Browse Airline Partners and Tourism Partners, including hotels, stays, tours, and activities."/>
+    <div className="directory-categories" role="tablist" aria-label="Directory categories">
+      {groups.map(group => {
+        const Icon = group.icon;
+        const count = partners.filter(partner => belongsToGroup(partner, group)).length;
+        return <button type="button" role="tab" id={`directory-tab-${group.id}`} aria-selected={category === group.id} aria-controls="directory-panel" tabIndex={category === group.id ? 0 : -1} onKeyDown={handleCategoryKey} className={`directory-category ${category === group.id ? 'selected' : ''}`} key={group.id} onClick={() => selectCategory(group.id)}>
+          <div className="directory-category-top"><span className={`metric-icon ${group.tint}`}><Icon size={18}/></span><span>{group.label}</span></div>
+          <strong>{group.id === 'user' ? '—' : count}</strong>
+          <small>{group.id === 'user' ? 'Profiles not connected' : `${count === 1 ? 'Partner' : 'Partners'} in the directory`}</small>
+        </button>;
+      })}
+    </div>
+    <div id="directory-panel" role="tabpanel" tabIndex={0} aria-labelledby={`directory-tab-${category}`}>
+      {category === 'user' ? <section className="panel directory-users"><Users size={28}/><h3>User accounts</h3><p>User profiles will appear here after the account service is connected.</p></section> : <>
+        <div className="filter-row directory-filters"><div className="filter-tabs" aria-label={`${activeGroup.label} status filters`}>{['All', 'Approved', 'Pending', 'Rejected'].map(value => <button type="button" key={value} className={status === value ? 'selected' : ''} aria-pressed={status === value} onClick={() => setStatus(value)}>{value}</button>)}</div><span className="result-count">{visiblePartners.length} of {groupPartners.length} {activeGroup.label.toLowerCase()}</span></div>
+        <section className="panel table-panel"><div className="panel-heading"><div><h3 className="directory-section-title"><ActiveIcon size={16}/>{activeGroup.label}</h3><p>{activeGroup.description}</p></div></div><PartnerReviewTable partners={visiblePartners} onView={onView}/></section>
+      </>}
+    </div>
+  </>;
 }
 function InsightsPage() {
   return <><SectionTitle eyebrow="BASIC TREND INSIGHTS" title="Travel insights" description="Understand what travelers are exploring, liking and saving." action={<button className="button button-secondary" onClick={()=>window.print()}><Download size={16}/> Export report</button>}/><div className="metric-grid"><Metric label="Experience views" value="3,345" change="14.2%" icon={Eye} tint="tint-blue"/><Metric label="Saved experiences" value="1,066" change="9.6%" icon={Bookmark} tint="tint-green"/><Metric label="Likes this week" value="824" change="11.3%" icon={Heart} tint="tint-purple"/><Metric label="Partner engagement" value="68.4%" change="4.8%" icon={ChartNoAxesCombined} tint="tint-orange"/></div><div className="dashboard-grid insights-grid"><section className="panel engagement-panel"><div className="panel-heading"><div><h3>Views & saves</h3><p>Weekly discovery activity · sample data</p></div></div><div className="chart-wrap chart-large"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartData} barGap={5}><CartesianGrid stroke="#edf1f6" vertical={false}/><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill:'#8994a5',fontSize:12}}/><YAxis axisLine={false} tickLine={false} tick={{fill:'#8994a5',fontSize:11}}/><Tooltip/><Bar dataKey="visitors" name="Views" fill="#638cf6" radius={[5,5,0,0]}/><Bar dataKey="saves" name="Saves" fill="#2ab6a4" radius={[5,5,0,0]}/></BarChart></ResponsiveContainer></div></section><section className="panel destinations-panel"><div className="panel-heading"><div><h3>Popular destinations</h3><p>Interest index · illustrative</p></div></div><div className="destination-list">{destinationData.map((d,i)=><div className="destination-row" key={d.name}><span className="destination-rank">0{i+1}</span><span className="destination-name">{d.name}</span><div className="destination-track"><span style={{width:`${d.value}%`,background:d.color}}/></div><strong>{d.value}</strong></div>)}</div><div className="chart-footnote">Sample values only. Connect event tracking to calculate real popularity.</div></section></div><EmptyNote>These charts use illustrative sample data. We will replace them with real Firestore or Backend 1 analytics after confirming your schema.</EmptyNote></>;
