@@ -1,3 +1,6 @@
+import { useNotifications } from './notifications/useNotifications';
+import { signOutWithNotifications } from './notifications/notificationService';
+import NotificationPanel from './notifications/NotificationPanel';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   LayoutDashboard, Users, Building2, ClipboardCheck, Compass, ChartNoAxesCombined,
@@ -7,26 +10,20 @@ import {
   CircleHelp, LogOut, Eye, CheckCircle2, AlertCircle, Mail, Globe, CalendarDays, Moon, Sun
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { demoPartners, demoOffers, demoDestinations, demoTravelPackages, activity } from './data.js';
+import { createRecord, persistStatus } from './firestoreService.js';
 import CatalogPage from './CatalogPage.jsx';
+import TripsPage from './TripsPage.jsx';
 import OfferForm from './OfferForm.jsx';
 import AirlineRouteReview, { RouteField } from './AirlineRouteReview.jsx';
 import { AirlineProfile, HotelProfile, RegistrationDetails } from './PartnerProfiles.jsx';
-import { firebaseConfigured, db } from './firebase.js';
-import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { firebaseConfigured, db, auth } from './firebase.js';
+import { collection, onSnapshot, doc, setDoc, collectionGroup, query, where } from 'firebase/firestore';
 
-const chartData = [
-  { name: 'Mon', visitors: 310, saves: 92 }, { name: 'Tue', visitors: 420, saves: 128 },
-  { name: 'Wed', visitors: 365, saves: 105 }, { name: 'Thu', visitors: 510, saves: 164 },
-  { name: 'Fri', visitors: 470, saves: 151 }, { name: 'Sat', visitors: 680, saves: 230 },
-  { name: 'Sun', visitors: 590, saves: 196 },
-];
-const destinationData = [
-  { name: 'Ella', value: 82, color: '#28b7a4' },
-  { name: 'Galle', value: 68, color: '#5d8df6' },
-  { name: 'Sigiriya', value: 55, color: '#f1a85b' },
-  { name: 'Mirissa', value: 44, color: '#9b7cf5' },
-];
+const chartData = [];
+const destinationData = [];
+const experienceData = [];
+let likesThisWeek = 0;
+
 
 export function getPartnerSection(partner) {
   const type = String(partner.type || '').trim().toLowerCase();
@@ -61,52 +58,38 @@ function SectionTitle({ eyebrow, title, description, action }) {
 function EmptyNote({ children }) { return <div className="empty-note"><AlertCircle size={16}/>{children}</div>; }
 
 export default function App() {
+  const [users, setUsers] = useState([]);
+  const [insightsVersion, setInsightsVersion] = useState(0);
   const [page, setPage] = useState('Overview');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [partnerFilter, setPartnerFilter] = useState('Pending');
   const [offerFilter, setOfferFilter] = useState('All');
   const [routeFilter, setRouteFilter] = useState('All');
-  const [partners, setPartners] = useState(firebaseConfigured ? [] : demoPartners);
+  const [partners, setPartners] = useState([]);
   const [activePartner, setActivePartner] = useState(null);
-  const [offers, setOffers] = useState(demoOffers);
-  const [routes, setRoutes] = useState([
-    {
-      id: 'R-UL504',
-      airlineName: 'Sri Lankan Airline',
-      flightNo: 'UL-504',
-      origin: { code: 'CMB', city: 'Colombo', country: 'Sri Lanka' },
-      destination: { code: 'DXB', city: 'Dubai', country: 'United Arab Emirates' },
-      departureTime: '08:30',
-      arrivalTime: '12:45',
-      aircraft: 'Airbus A330-300',
-      frequency: 'Daily',
-      status: 'pending',
-    },
-    {
-      id: 'R-UL308',
-      airlineName: 'Sri Lankan Airline',
-      flightNo: 'UL-308',
-      origin: { code: 'CMB', city: 'Colombo', country: 'Sri Lanka' },
-      destination: { code: 'SIN', city: 'Singapore', country: 'Singapore' },
-      departureTime: '07:20',
-      arrivalTime: '13:50',
-      aircraft: 'Airbus A321',
-      frequency: 'Daily',
-      status: 'approved',
-    }
-  ]);
-  const [destinations, setDestinations] = useState(demoDestinations);
-  const [travelPackages, setTravelPackages] = useState(demoTravelPackages);
+  const [offers, setOffers] = useState([]);
+  const [routes, setRoutes] = useState([]);
+  const [destinations, setDestinations] = useState([]);
+  const [travelPackages, setTravelPackages] = useState([]);
   const [toast, setToast] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showOfferForm, setShowOfferForm] = useState(false);
   const [theme, setTheme] = useState(() => window.localStorage.getItem('skyconnect-admin-theme') || 'light');
   const pendingPartnerCount = partners.filter(partner => partner.status === 'Pending').length;
 
-  useEffect(() => { window.localStorage.setItem('skyconnect-admin-theme', theme); }, [theme]);
+  useEffect(() => onSnapshot(doc(db, 'users', auth.currentUser.uid, 'settings', 'preferences'), snap => {
+    if (snap.exists() && snap.data().theme) setTheme(snap.data().theme);
+  }), []);
+  const changeTheme = async () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    try { await setDoc(doc(db, 'users', auth.currentUser.uid, 'settings', 'preferences'), { theme: next }, {merge:true}); }
+    catch (error) { notify(error.message); }
+  };
 
   const notify = (message) => { setToast(message); window.setTimeout(() => setToast(''), 2800); };
+  const notificationState = useNotifications(auth.currentUser?.uid, notify);
+  useEffect(() => { if(notificationState.notificationOpen) setShowNotifications(true); }, [notificationState.notificationOpen]);
 
   // Real-time Firestore sync with partners, offers, and routes collections
   useEffect(() => {
@@ -121,7 +104,7 @@ export default function App() {
     }, (err) => console.log('Admin Firestore partners error:', err));
 
     const unsubOffers = onSnapshot(collection(db, 'offers'), (snap) => {
-      if (!snap.empty) {
+      {
         const liveOffers = snap.docs.map(docSnap => ({
           id: docSnap.id,
           ...docSnap.data(),
@@ -131,7 +114,7 @@ export default function App() {
     }, (err) => console.log('Admin Firestore offers error:', err));
 
     const unsubRoutes = onSnapshot(collection(db, 'routes'), (snap) => {
-      if (!snap.empty) {
+      {
         const liveRoutes = snap.docs.map(docSnap => ({
           id: docSnap.id,
           ...docSnap.data(),
@@ -140,52 +123,45 @@ export default function App() {
       }
     }, (err) => console.log('Admin Firestore routes error:', err));
 
+    const unsubDestinations = onSnapshot(collection(db, 'destinations'), snap => setDestinations(snap.docs.map(d => ({ ...d.data(), id: d.id }))), err => notify(err.message));
+    const unsubPackages = onSnapshot(collection(db, 'packages'), snap => setTravelPackages(snap.docs.map(d => ({ ...d.data(), id: d.id }))), err => notify(err.message));
+    const unsubUsers = onSnapshot(collection(db, 'users'), snap => setUsers(snap.docs.map(d => ({ ...d.data(), id:d.id, type:'user', status:'Active', initials:(d.data().name || 'U').slice(0,2), location:d.data().country || '' }))), err => notify(err.message));
+    const unsubSaved = onSnapshot(query(collectionGroup(db, 'savedPlans'), where('savedAt', '>=', '')), snap => {
+      const days = Array.from({length:7},(_,index) => { const date = new Date(); date.setDate(date.getDate() - 6 + index); return {name:date.toISOString().slice(0,10),saves:0}; });
+      snap.docs.forEach(d => { const day = days.find(item => item.name === String(d.data().savedAt || '').slice(0,10)); if (day) day.saves += 1; });
+      chartData.splice(0, chartData.length, ...days); setInsightsVersion(v => v + 1);
+    }, err => notify(err.message));
+    const unsubLikes = onSnapshot(query(collectionGroup(db, 'likes'), where('createdAt', '>=', '')), snap => {
+      likesThisWeek = snap.docs.filter(d => new Date(d.data().createdAt).getTime() >= Date.now() - 7 * 86400000).length;
+      const destCounts = new Map();
+      const expCounts = new Map();
+      snap.docs.forEach(d => {
+        const value = d.data();
+        if (value.type === 'destination') {
+          destCounts.set(value.name, (destCounts.get(value.name) || 0) + 1);
+        } else if (value.name) {
+          expCounts.set(value.name, (expCounts.get(value.name) || 0) + 1);
+        }
+      });
+      destinationData.splice(0, destinationData.length, ...[...destCounts].sort((a, b) => b[1] - a[1]).map(([name, value]) => ({ name, value, color: '#28b7a4' })));
+      experienceData.splice(0, experienceData.length, ...[...expCounts].sort((a, b) => b[1] - a[1]).map(([name, value]) => ({ name, value, color: '#638cf6' })));
+      setInsightsVersion(v => v + 1);
+    }, err => notify(err.message));
     return () => {
+      unsubDestinations(); unsubPackages(); unsubLikes(); unsubUsers(); unsubSaved();
       unsubPartners();
       unsubOffers();
       unsubRoutes();
     };
   }, []);
 
-  const changePartnerStatus = async (id, status) => {
-    setPartners(prev => prev.map(p => p.id === id ? { ...p, status } : p));
-    setActivePartner(null);
-    notify(`Partner ${id} marked ${status.toLowerCase()}.`);
-
-    if (firebaseConfigured && db) {
-      try {
-        await updateDoc(doc(db, 'partners', id), { status });
-      } catch (err) {
-        console.error('Failed to update partner in Firestore:', err);
-      }
-    }
+  const changeStatus = async (name, id, status) => {
+    try { await persistStatus(name, id, status); setActivePartner(null); notify(`Saved ${status.toLowerCase()} status.`); }
+    catch (error) { notify(`Update failed: ${error.message}`); }
   };
-
-  const changeOfferStatus = async (id, status) => {
-    setOffers(prev => prev.map(o => o.id === id ? { ...o, status } : o));
-    notify(`Offer ${id} marked ${status.toLowerCase()}.`);
-
-    if (firebaseConfigured && db) {
-      try {
-        await updateDoc(doc(db, 'offers', id), { status });
-      } catch (err) {
-        console.error('Failed to update offer in Firestore:', err);
-      }
-    }
-  };
-
-  const changeRouteStatus = async (id, status) => {
-    setRoutes(prev => prev.map(r => r.id === id ? { ...r, status } : r));
-    notify(`Flight schedule ${id} marked ${status.toLowerCase()} (CAASL updated).`);
-
-    if (firebaseConfigured && db) {
-      try {
-        await updateDoc(doc(db, 'routes', id), { status });
-      } catch (err) {
-        console.error('Failed to update route in Firestore:', err);
-      }
-    }
-  };
+  const changePartnerStatus = (id, status) => changeStatus('partners', id, status);
+  const changeOfferStatus = (id, status) => changeStatus('offers', id, status);
+  const changeRouteStatus = (id, status) => changeStatus('routes', id, status);
 
   const pendingPartnersCount = partners.filter(p => p.status === 'Pending').length;
   const pendingOffersCount = offers.filter(o => o.status === 'Pending').length;
@@ -194,6 +170,7 @@ export default function App() {
   const dynamicNavGroups = useMemo(() => [
     { label: 'WORKSPACE', items: [
       { id: 'Overview', icon: LayoutDashboard },
+      { id: 'Trips & bookings', icon: Bookmark },
       { id: 'Partner verification', icon: ClipboardCheck, badge: pendingPartnersCount > 0 ? String(pendingPartnersCount) : null },
       { id: 'Offers & experiences', icon: Compass, badge: pendingOffersCount > 0 ? String(pendingOffersCount) : null },
       { id: 'Flight routes', icon: Plane, badge: pendingRoutesCount > 0 ? String(pendingRoutesCount) : null },
@@ -208,11 +185,13 @@ export default function App() {
     ]},
   ], [pendingPartnersCount, pendingOffersCount, pendingRoutesCount]);
 
-  const createOffer = (offer) => {
-    const id = `OF-${Date.now().toString(36).toUpperCase()}`;
-    setOffers(prev => [{ ...offer, id, status: 'Pending', reach: '—' }, ...prev]);
-    setShowOfferForm(false);
-    notify('Offer added to the pending review list.');
+  const createOffer = async offer => {
+    try {
+      const partner = partners.find(p => p.name === offer.partner);
+      if (!partner || partner.status !== 'Approved') throw new Error('Select an approved partner.');
+      await createRecord('offers', { ...offer, name: offer.title, type: 'tour', partnerId: partner.id, city: offer.destination, priceLKR: Number(offer.price || 0), priceUSD: Number(offer.price || 0) / 300, images: offer.image ? [offer.image] : [], status: 'Pending' });
+      setShowOfferForm(false); notify('Offer saved for review.');
+    } catch (error) { notify(error.message); }
   };
   const filteredPartners = useMemo(() => partners.filter(p =>
     (partnerFilter === 'All' || p.status === partnerFilter) &&
@@ -254,20 +233,21 @@ export default function App() {
   const nav = <><div className="brand"><img className="brand-mark" src="/logo.png" alt="SkyConnect logo" width="39" height="39"/><div><strong>SkyConnect<span>SL</span></strong><small>TRAVEL DISCOVERY</small></div><button className="close-nav" onClick={() => setMobileOpen(false)}><X size={19}/></button></div>
     <div className="workspace-chip"><span className="online-dot"/><span>Admin workspace</span><ChevronDown size={14}/></div>
     {dynamicNavGroups.map(group => <div className="nav-group" key={group.label}><div className="nav-label">{group.label}</div>{group.items.map(item => {const Icon = item.icon; return <button key={item.id} onClick={() => go(item.id)} className={`nav-item ${page === item.id ? 'active' : ''}`}><Icon size={18}/><span>{item.id}</span>{item.badge && <b className="nav-badge">{item.badge}</b>}</button>;})}</div>)}
-    <div className="sidebar-bottom"><div className="help-card"><div className="help-icon"><CircleHelp size={17}/></div><strong>Need a hand?</strong><p>Explore the admin guide and tips.</p><button onClick={() => notify('Admin guide will be added in a future iteration.')}>Open help centre <ArrowUpRight size={13}/></button></div><button className="profile-row" onClick={() => go('Settings')}><Avatar initials="AD" color="navy"/><span><strong>SkyConnect Admin</strong><small>Administrator</small></span><MoreHorizontal size={18}/></button></div></>;
+    <div className="sidebar-bottom"><div className="help-card"><div className="help-icon"><CircleHelp size={17}/></div><strong>Need a hand?</strong><p>Explore the admin guide and tips.</p><button onClick={() => notify('Admin guide will be added in a future iteration.')}>Open help centre <ArrowUpRight size={13}/></button></div><button className="profile-row" onClick={() => signOutWithNotifications().catch(e=>notify(e.message))}><Avatar initials="AD" color="navy"/><span><strong>SkyConnect Admin</strong><small>Administrator</small></span><MoreHorizontal size={18}/></button></div></>;
 
   return <div className="app-shell" data-theme={theme}>
     <aside className={`sidebar ${mobileOpen ? 'sidebar-open' : ''}`}>{nav}</aside>
     {mobileOpen && <div className="scrim" onClick={() => setMobileOpen(false)}/>}
     <main className="main-area">
-      <header className="topbar"><div className="topbar-left"><button className="mobile-menu" onClick={() => setMobileOpen(true)}><Menu size={21}/></button><div className="breadcrumbs">Workspace <span>/</span> <strong>{page}</strong></div></div><div className="topbar-actions"><div className="searchbox"><Search size={16}/><input aria-label="Search" placeholder="Search anything..." value={search} onChange={e => setSearch(e.target.value)}/><kbd>⌘ K</kbd></div><button className="icon-button notification-button" aria-label="Notifications" onClick={() => setShowNotifications(!showNotifications)}><Bell size={18}/><i/></button>{showNotifications && <div className="notification-pop"><strong>Notifications</strong><p>{pendingPartnerCount} partner applications need review.</p><button onClick={() => {go('Partner verification');setShowNotifications(false)}}>Review applications <ArrowUpRight size={13}/></button></div>}<button className="theme-toggle" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} onClick={() => setTheme(current => current === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? <Sun size={17}/> : <Moon size={17}/>}</button><div className="topbar-user"><Avatar initials="AD" color="navy" small/><span>Admin</span><ChevronDown size={14}/></div></div></header>
+      <header className="topbar"><div className="topbar-left"><button className="mobile-menu" onClick={() => setMobileOpen(true)}><Menu size={21}/></button><div className="breadcrumbs">Workspace <span>/</span> <strong>{page}</strong></div></div><div className="topbar-actions"><div className="searchbox"><Search size={16}/><input aria-label="Search" placeholder="Search anything..." value={search} onChange={e => setSearch(e.target.value)}/><kbd>⌘ K</kbd></div><button className="icon-button notification-button" aria-label="Notifications" onClick={() => setShowNotifications(!showNotifications)}><Bell size={18}/>{notificationState.notifications.some(n=>n.unread)&&<i/>}</button>{showNotifications && <NotificationPanel state={notificationState} notify={notify}><p>{pendingPartnerCount} partner applications need review.</p><button onClick={() => {go('Partner verification');setShowNotifications(false)}}>Review applications <ArrowUpRight size={13}/></button></NotificationPanel>}<button className="theme-toggle" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} onClick={changeTheme}>{theme === 'dark' ? <Sun size={17}/> : <Moon size={17}/>}</button><div className="topbar-user"><Avatar initials="AD" color="navy" small/><span>Admin</span><ChevronDown size={14}/></div></div></header>
       <div className="page-content">
-        {page === 'Overview' && <Overview partners={partners} offers={offers} routes={routes} go={go} notify={notify} onView={setActivePartner} />}
+        {page === 'Overview' && <Overview users={users} partners={partners} offers={offers} routes={routes} go={go} notify={notify} onView={setActivePartner} />}
+        {page === 'Trips & bookings' && <TripsPage users={users} partners={partners} offers={offers} routes={routes} travelPackages={travelPackages} destinations={destinations} search={search} onSearchChange={setSearch}/>}
         {page === 'Partner verification' && <PartnerPage partners={filteredPartners} filter={partnerFilter} setFilter={setPartnerFilter} onView={setActivePartner} />}
         {page === 'Offers & experiences' && <OffersPage offers={filteredOffers} filter={offerFilter} setFilter={setOfferFilter} onStatus={changeOfferStatus} notify={notify} onAdd={() => setShowOfferForm(true)}/>}
         {page === 'Flight routes' && <RoutesPage routes={filteredRoutes} filter={routeFilter} setFilter={setRouteFilter} onStatus={changeRouteStatus} notify={notify}/>}
-        {page === 'Destinations & packages' && <CatalogPage destinations={destinations} setDestinations={setDestinations} packages={travelPackages} setPackages={setTravelPackages} search={search} notify={notify}/>}
-        {page === 'Users & partners' && <DirectoryPage partners={partners} search={search} onView={setActivePartner} />}
+        {page === 'Destinations & packages' && <CatalogPage partners={partners} destinations={destinations}  packages={travelPackages}  search={search} notify={notify}/>}
+        {page === 'Users & partners' && <DirectoryPage partners={[...partners, ...users.filter(user => !partners.some(partner => partner.id === user.id))]} search={search} onView={setActivePartner} />}
         {page === 'Trend insights' && <InsightsPage />}
         {page === 'Settings' && <SettingsPage notify={notify}/>}
       </div>
@@ -279,17 +259,18 @@ export default function App() {
   </div>;
 }
 
-function Overview({ partners, offers, routes, go, notify, onView }) {
+function Overview({ users, partners, offers, routes, go, notify, onView }) {
   const pendingPartners = partners.filter(p => p.status === 'Pending').length;
   const pendingOffers = offers.filter(o => o.status === 'Pending').length;
   const pendingRoutes = (routes || []).filter(r => r.status === 'pending' || r.status === 'Pending').length;
   const totalPending = pendingPartners + pendingOffers + pendingRoutes;
+  const activity = [...partners.map(p => ({ title:'Partner profile',detail:p.name,time:p.updatedAt || p.createdAt || '',icon:'partner',tone:'blue' })), ...offers.map(o => ({title:'Listing '+o.status,detail:o.title || o.name,time:o.updatedAt || o.createdAt || '',icon:'offer',tone:'green'}))].sort((a,b)=>String(b.time).localeCompare(String(a.time))).slice(0,6);
   const published = offers.filter(o => o.status === 'Published').length;
   return <>
-    <SectionTitle eyebrow="SUNDAY, OCTOBER 11, 2026" title="Good afternoon, Admin ✨" description="Here's what's happening across your travel discovery platform today." action={<button className="button button-primary" onClick={() => go('Flight routes')}><Plus size={16}/> Manage schedules</button>}/>
+    <SectionTitle eyebrow={new Date().toLocaleDateString('en-LK',{timeZone:'Asia/Colombo',dateStyle:'full'})} title="Good afternoon, Admin ✨" description="Here's what's happening across your travel discovery platform today." action={<button className="button button-primary" onClick={() => go('Flight routes')}><Plus size={16}/> Manage schedules</button>}/>
     <div className="welcome-strip"><div className="welcome-copy"><div className="welcome-label"><Sparkles size={14}/> YOUR WEEKLY SNAPSHOT</div><h2>Make every journey <em>personal.</em></h2><p>Keep great local experiences visible, trusted and easy to discover.</p><button onClick={() => go('Trend insights')}>Explore travel insights <ArrowUpRight size={15}/></button></div><div className="welcome-art"><div className="sun"/><div className="mountain mountain-back"/><div className="mountain mountain-front"/><div className="art-plane"><Plane size={30}/></div><div className="art-cloud cloud-one"/><div className="art-cloud cloud-two"/></div></div>
-    <div className="metric-grid"><Metric label="Total users" value="2,840" change="12.8%" icon={Users} tint="tint-blue"/><Metric label="Verified partners" value={String(partners.filter(p=>p.status==='Approved').length)} change="8.2%" icon={ShieldCheck} tint="tint-green"/><Metric label="Published offers" value={String(published + 124)} change="6.4%" icon={Compass} tint="tint-purple"/><Metric label="Pending reviews" value={String(totalPending)} change={`${pendingRoutes} routes · ${pendingOffers} offers`} direction="down" icon={Clock3} tint="tint-orange"/></div>
-    <div className="dashboard-grid"><section className="panel engagement-panel"><div className="panel-heading"><div><h3>Discovery activity</h3><p>Explore views and saves across the platform</p></div><button className="select-like" onClick={() => notify('Showing the last 7 days.')}>Last 7 days <ChevronDown size={14}/></button></div><div className="chart-legend"><span><i className="legend-blue"/> Views <strong>3,345</strong></span><span><i className="legend-teal"/> Saves <strong>1,066</strong></span></div><div className="chart-wrap"><ResponsiveContainer width="100%" height="100%"><AreaChart data={chartData} margin={{top:10,right:4,left:-22,bottom:0}}><defs><linearGradient id="viewsFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#638cf6" stopOpacity={0.18}/><stop offset="95%" stopColor="#638cf6" stopOpacity={0}/></linearGradient></defs><CartesianGrid stroke="#edf1f6" vertical={false}/><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill:'#8994a5',fontSize:12}} dy={9}/><YAxis axisLine={false} tickLine={false} tick={{fill:'#8994a5',fontSize:11}}/><Tooltip contentStyle={{borderRadius:12,border:'1px solid #e8edf4',boxShadow:'0 8px 24px #14233a12'}}/><Area type="monotone" dataKey="visitors" name="Views" stroke="#638cf6" strokeWidth={2.5} fill="url(#viewsFill)"/><Area type="monotone" dataKey="saves" name="Saves" stroke="#2ab6a4" strokeWidth={2.5} fill="transparent"/></AreaChart></ResponsiveContainer></div></section>
+    <div className="metric-grid"><Metric label="Total users" value={String(users.length)} change="N/A" icon={Users} tint="tint-blue"/><Metric label="Verified partners" value={String(partners.filter(p=>p.status==='Approved').length)} change="N/A" icon={ShieldCheck} tint="tint-green"/><Metric label="Published offers" value={String(published)} change="N/A" icon={Compass} tint="tint-purple"/><Metric label="Pending reviews" value={String(totalPending)} change={`${pendingRoutes} routes · ${pendingOffers} offers`} direction="down" icon={Clock3} tint="tint-orange"/></div>
+    <div className="dashboard-grid"><section className="panel engagement-panel"><div className="panel-heading"><div><h3>Discovery activity</h3><p>Explore views and saves across the platform</p></div><button className="select-like" onClick={() => notify('Showing the last 7 days.')}>Last 7 days <ChevronDown size={14}/></button></div><div className="chart-legend"><span><i className="legend-blue"/> Views <strong>Not tracked</strong></span><span><i className="legend-teal"/> Saves <strong>{chartData.reduce((sum,day)=>sum+day.saves,0)}</strong></span></div><div className="chart-wrap"><ResponsiveContainer width="100%" height="100%"><AreaChart data={chartData} margin={{top:10,right:4,left:-22,bottom:0}}><defs><linearGradient id="viewsFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#638cf6" stopOpacity={0.18}/><stop offset="95%" stopColor="#638cf6" stopOpacity={0}/></linearGradient></defs><CartesianGrid stroke="#edf1f6" vertical={false}/><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill:'#8994a5',fontSize:12}} dy={9}/><YAxis axisLine={false} tickLine={false} tick={{fill:'#8994a5',fontSize:11}}/><Tooltip contentStyle={{borderRadius:12,border:'1px solid #e8edf4',boxShadow:'0 8px 24px #14233a12'}}/><Area type="monotone" dataKey="visitors" name="Views" stroke="#638cf6" strokeWidth={2.5} fill="url(#viewsFill)"/><Area type="monotone" dataKey="saves" name="Saves" stroke="#2ab6a4" strokeWidth={2.5} fill="transparent"/></AreaChart></ResponsiveContainer></div></section>
     <section className="panel activity-panel"><div className="panel-heading"><div><h3>Recent activity</h3><p>Latest updates from your workspace</p></div><button className="text-button" onClick={() => go('Offers & experiences')}>View all <ArrowUpRight size={14}/></button></div><div className="activity-list">{activity.map((a,i)=><div className="activity-item" key={i}><div className={`activity-icon ${a.tone}`}>{a.icon==='partner'?<Building2 size={16}/>:a.icon==='offer'?<Compass size={16}/>:a.icon==='check'?<Check size={16}/>:<ChartNoAxesCombined size={16}/>}</div><div className="activity-text"><strong>{a.title}</strong><p>{a.detail}</p><small>{a.time}</small></div></div>)}</div></section></div>
     <section className="panel table-panel"><div className="panel-heading"><div><h3>Partner applications</h3><p>Open each application to check its profile before deciding</p></div><button className="text-button" onClick={() => go('Partner verification')}>View applications <ArrowUpRight size={14}/></button></div><PartnerReviewTable partners={partners.filter(p=>p.status==='Pending').slice(0,3)} onView={onView} compact/></section>
     <div className="insight-note"><div className="insight-spark"><Sparkles size={18}/></div><div><strong>Travel discovery insight</strong><p>Nature and coastal experiences are strong categories to feature. Keep partner listings current so travelers see relevant local options.</p></div><button onClick={() => go('Trend insights')}>View insights <ArrowUpRight size={14}/></button></div>
@@ -443,7 +424,7 @@ export function PartnerReviewModal({ partner, onClose, onStatus }) {
         {partner.type==='Hotel' && <HotelProfile hotel={partner.hotelDetails}/>}
         <RegistrationDetails partner={partner}/>
         <div className="review-submitted"><CalendarDays size={15}/> Application submitted <strong>{partner.submittedAt || 'Date not provided'}</strong></div>
-        <div className="review-demo-note"><AlertCircle size={15}/> Sample application details for frontend preview. Document uploads and independent company verification are not represented in this demo.</div>
+        <div className="review-demo-note"><AlertCircle size={15}/> Review submitted information before approval. Independent verification requires checking the original documents.</div>
       </div>
       <div className="review-modal-footer"><button className="button button-secondary" onClick={onClose}>Close</button>{partner.status==='Pending' && <div><button className="button review-reject" onClick={()=>onStatus(partner.id,'Rejected')}><X size={15}/> Reject application</button><button className="button button-primary" onClick={()=>onStatus(partner.id,'Approved')}><Check size={15}/> Approve partner</button></div>}</div>
     </section>
@@ -499,12 +480,12 @@ export function DirectoryPage({ partners, search = '', onView }) {
         return <button type="button" role="tab" id={`directory-tab-${group.id}`} aria-selected={category === group.id} aria-controls="directory-panel" tabIndex={category === group.id ? 0 : -1} onKeyDown={handleCategoryKey} className={`directory-category ${category === group.id ? 'selected' : ''}`} key={group.id} onClick={() => selectCategory(group.id)}>
           <div className="directory-category-top"><span className={`metric-icon ${group.tint}`}><Icon size={18}/></span><span>{group.label}</span></div>
           <strong>{group.id === 'user' ? '—' : count}</strong>
-          <small>{group.id === 'user' ? 'Profiles not connected' : `${count === 1 ? 'Partner' : 'Partners'} in the directory`}</small>
+          <small>{`${count} profiles in the directory`}</small>
         </button>;
       })}
     </div>
     <div id="directory-panel" role="tabpanel" tabIndex={0} aria-labelledby={`directory-tab-${category}`}>
-      {category === 'user' ? <section className="panel directory-users"><Users size={28}/><h3>User accounts</h3><p>User profiles will appear here after the account service is connected.</p></section> : <>
+      {category === 'user' ? <section className="panel"><PartnerReviewTable partners={visiblePartners} onView={onView}/></section> : <>
         <div className="filter-row directory-filters"><div className="filter-tabs" aria-label={`${activeGroup.label} status filters`}>{['All', 'Approved', 'Pending', 'Rejected'].map(value => <button type="button" key={value} className={status === value ? 'selected' : ''} aria-pressed={status === value} onClick={() => setStatus(value)}>{value}</button>)}</div><span className="result-count">{visiblePartners.length} of {groupPartners.length} {activeGroup.label.toLowerCase()}</span></div>
         <section className="panel table-panel"><div className="panel-heading"><div><h3 className="directory-section-title"><ActiveIcon size={16}/>{activeGroup.label}</h3><p>{activeGroup.description}</p></div></div><PartnerReviewTable partners={visiblePartners} onView={onView}/></section>
       </>}
@@ -512,8 +493,8 @@ export function DirectoryPage({ partners, search = '', onView }) {
   </>;
 }
 function InsightsPage() {
-  return <><SectionTitle eyebrow="BASIC TREND INSIGHTS" title="Travel insights" description="Understand what travelers are exploring, liking and saving." action={<button className="button button-secondary" onClick={()=>window.print()}><Download size={16}/> Export report</button>}/><div className="metric-grid"><Metric label="Experience views" value="3,345" change="14.2%" icon={Eye} tint="tint-blue"/><Metric label="Saved experiences" value="1,066" change="9.6%" icon={Bookmark} tint="tint-green"/><Metric label="Likes this week" value="824" change="11.3%" icon={Heart} tint="tint-purple"/><Metric label="Partner engagement" value="68.4%" change="4.8%" icon={ChartNoAxesCombined} tint="tint-orange"/></div><div className="dashboard-grid insights-grid"><section className="panel engagement-panel"><div className="panel-heading"><div><h3>Views & saves</h3><p>Weekly discovery activity · sample data</p></div></div><div className="chart-wrap chart-large"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartData} barGap={5}><CartesianGrid stroke="#edf1f6" vertical={false}/><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill:'#8994a5',fontSize:12}}/><YAxis axisLine={false} tickLine={false} tick={{fill:'#8994a5',fontSize:11}}/><Tooltip/><Bar dataKey="visitors" name="Views" fill="#638cf6" radius={[5,5,0,0]}/><Bar dataKey="saves" name="Saves" fill="#2ab6a4" radius={[5,5,0,0]}/></BarChart></ResponsiveContainer></div></section><section className="panel destinations-panel"><div className="panel-heading"><div><h3>Popular destinations</h3><p>Interest index · illustrative</p></div></div><div className="destination-list">{destinationData.map((d,i)=><div className="destination-row" key={d.name}><span className="destination-rank">0{i+1}</span><span className="destination-name">{d.name}</span><div className="destination-track"><span style={{width:`${d.value}%`,background:d.color}}/></div><strong>{d.value}</strong></div>)}</div><div className="chart-footnote">Sample values only. Connect event tracking to calculate real popularity.</div></section></div><EmptyNote>These charts use illustrative sample data. We will replace them with real Firestore or Backend 1 analytics after confirming your schema.</EmptyNote></>;
+  return <><SectionTitle eyebrow="BASIC TREND INSIGHTS" title="Travel insights" description="Understand what travelers are exploring, liking and saving." action={<button className="button button-secondary" onClick={()=>window.print()}><Download size={16}/> Export report</button>}/><div className="metric-grid"><Metric label="Experience views" value="Not tracked" change="N/A" icon={Eye} tint="tint-blue"/><Metric label="Saved plans this week" value={chartData.reduce((sum,day)=>sum+day.saves,0)} change="N/A" icon={Bookmark} tint="tint-green"/><Metric label="Likes this week" value={likesThisWeek} change="N/A" icon={Heart} tint="tint-purple"/><Metric label="Partner engagement" value="Not tracked" change="N/A" icon={ChartNoAxesCombined} tint="tint-orange"/></div><div className="dashboard-grid insights-grid"><section className="panel engagement-panel"><div className="panel-heading"><div><h3>Views & saves</h3><p>Saved plans from Firestore</p></div></div><div className="chart-wrap chart-large"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartData} barGap={5}><CartesianGrid stroke="#edf1f6" vertical={false}/><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill:'#8994a5',fontSize:12}}/><YAxis axisLine={false} tickLine={false} tick={{fill:'#8994a5',fontSize:11}}/><Tooltip/><Bar dataKey="visitors" name="Views" fill="#638cf6" radius={[5,5,0,0]}/><Bar dataKey="saves" name="Saves" fill="#2ab6a4" radius={[5,5,0,0]}/></BarChart></ResponsiveContainer></div></section><section className="panel destinations-panel"><div className="panel-heading"><div><h3>Popular destinations</h3><p>Destination likes</p></div></div><div className="destination-list">{destinationData.length ? destinationData.map((d,i)=><div className="destination-row" key={d.name}><span className="destination-rank">0{i+1}</span><span className="destination-name">{d.name}</span><div className="destination-track"><span style={{width:`${Math.min(100, d.value * 20)}%`,background:d.color}}/></div><strong>{d.value}</strong></div>) : <p className="empty-state" style={{padding:16,color:'#8994a5',fontSize:13}}>No destination likes recorded yet.</p>}</div><div className="chart-footnote">Destination likes saved by traveler accounts.</div></section><section className="panel destinations-panel"><div className="panel-heading"><div><h3>Popular experiences</h3><p>Stays and tours likes</p></div></div><div className="destination-list">{experienceData.length ? experienceData.map((d,i)=><div className="destination-row" key={d.name}><span className="destination-rank">0{i+1}</span><span className="destination-name">{d.name}</span><div className="destination-track"><span style={{width:`${Math.min(100, d.value * 20)}%`,background:d.color}}/></div><strong>{d.value}</strong></div>) : <p className="empty-state" style={{padding:16,color:'#8994a5',fontSize:13}}>No experience likes recorded yet.</p>}</div><div className="chart-footnote">Stays, tours and activity likes from travelers.</div></section></div><EmptyNote>Likes and saves come directly from live Firestore. Experience views require client event tracking, which is outside this implementation.</EmptyNote></>;
 }
 function SettingsPage({ notify }) {
-  return <><SectionTitle eyebrow="WORKSPACE CONFIGURATION" title="Settings" description="Manage the connections and access rules for the SkyConnect admin console."/><div className="settings-grid"><section className="panel settings-panel"><div className="settings-heading"><div className="settings-icon blue"><ShieldCheck size={19}/></div><div><h3>Authentication & access</h3><p>Admin access and role permissions</p></div></div><div className="setting-line"><div><strong>Firebase configuration</strong><p>Connect this console to your Firebase project.</p></div><Badge status={firebaseConfigured?'approved':'pending'}>{firebaseConfigured?'Configured':'Not configured'}</Badge></div><div className="setting-line"><div><strong>Admin role enforcement</strong><p>Must be enforced with Firebase custom claims or backend authorization.</p></div><Badge status="pending">To configure</Badge></div><button className="button button-secondary" onClick={()=>notify('Set Firebase variables in .env, then restart the dev server.')}><Settings size={15}/> Setup guide</button></section><section className="panel settings-panel"><div className="settings-heading"><div className="settings-icon purple"><Sparkles size={19}/></div><div><h3>AI service connection</h3><p>Backend 2 recommendation service</p></div></div><div className="setting-line"><div><strong>FastAPI base URL</strong><p>Set VITE_AI_API_BASE_URL in your local .env file.</p></div><Badge status="pending">Not tested</Badge></div><div className="setting-line"><div><strong>Recommendation endpoint</strong><p>Will be mapped to the endpoint in your Backend 2 repository.</p></div><Badge status="pending">To configure</Badge></div><button className="button button-secondary" onClick={()=>notify('Please confirm the actual FastAPI route from Backend 2.')}>Review API connection <ExternalLink size={14}/></button></section></div><div className="security-callout"><ShieldCheck size={20}/><div><strong>Security before launch</strong><p>Use role-based authorization, Firestore security rules, server-side validation and environment variables. Never expose service-account keys or AI provider secrets in browser code.</p></div></div></>;
+  return <><SectionTitle eyebrow="WORKSPACE CONFIGURATION" title="Settings" description="Manage the connections and access rules for the SkyConnect admin console."/><div className="settings-grid"><section className="panel settings-panel"><div className="settings-heading"><div className="settings-icon blue"><ShieldCheck size={19}/></div><div><h3>Authentication & access</h3><p>Admin access and role permissions</p></div></div><div className="setting-line"><div><strong>Firebase configuration</strong><p>Connect this console to your Firebase project.</p></div><Badge status={firebaseConfigured?'approved':'pending'}>{firebaseConfigured?'Configured':'Not configured'}</Badge></div><div className="setting-line"><div><strong>Admin role enforcement</strong><p>Firebase custom claims and Firestore rules protect this console.</p></div><Badge status="approved">Enabled</Badge></div><button className="button button-secondary" onClick={()=>notify('Set Firebase variables in .env, then restart the dev server.')}><Settings size={15}/> Setup guide</button></section><section className="panel settings-panel"><div className="settings-heading"><div className="settings-icon purple"><Sparkles size={19}/></div><div><h3>AI service connection</h3><p>Backend 2 recommendation service</p></div></div><div className="setting-line"><div><strong>FastAPI base URL</strong><p>Set VITE_AI_API_BASE_URL in your local .env file.</p></div><Badge status="pending">Not tested</Badge></div><div className="setting-line"><div><strong>Recommendation endpoint</strong><p>Will be mapped to the endpoint in your Backend 2 repository.</p></div><Badge status="pending">To configure</Badge></div><button className="button button-secondary" onClick={()=>notify('Please confirm the actual FastAPI route from Backend 2.')}>Review API connection <ExternalLink size={14}/></button></section></div><div className="security-callout"><ShieldCheck size={20}/><div><strong>Security before launch</strong><p>Use role-based authorization, Firestore security rules, server-side validation and environment variables. Never expose service-account keys or AI provider secrets in browser code.</p></div></div></>;
 }

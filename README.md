@@ -40,7 +40,7 @@ Open the local URL Vite prints, usually `http://localhost:5173`.
 5. Create Firestore collections according to the final shared data model.
 6. Add restrictive Firestore Security Rules and enforce admin roles with custom claims or server-side authorization.
 
-Firebase initialization is in `src/firebase.js`. The dashboard currently uses local demo arrays in `src/data.js`; it does not yet read or write Firestore.
+Firebase initialization is in `src/firebase.js`. The dashboard reads Firestore and persists catalog/status changes. See `FIRESTORE.md` and `../skyconnect-backend/README.md` for the required migration, rules and administrator setup.
 
 The supplied partner mock store is preserved in `src/partnerMockData.js`, including airlines, routes, hotels, registrations, bookings, and analytics. `src/partnerData.js` adapts its profiles and routes to the admin UI. The dashboard uses all 4 supplied airlines, 6 routes, and 4 hotels, plus the supplied pending tourism registrations. The existing tourism demo partners and offers are retained. Helitours' pending registration is merged with its airline profile rather than listed twice. Hotels appear as individual Hotel records; no tourism portfolio owner is assigned because the source does not supply that relationship.
 

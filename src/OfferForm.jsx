@@ -19,6 +19,7 @@ export default function OfferForm({ partners, destinations, onClose, onSubmit })
       setError('Price must be zero or higher.');
       return;
     }
+    if (form.image && !/^https:\/\//i.test(form.image)) { setError('Use an HTTPS image URL accessible to all apps, or leave it empty.'); return; }
     onSubmit({ ...form, title: form.title.trim(), description: form.description.trim(), price: form.price ? Number(form.price) : null });
   };
 
@@ -29,7 +30,7 @@ export default function OfferForm({ partners, destinations, onClose, onSubmit })
         <label>Offer title<input autoFocus value={form.title} onChange={event => update('title', event.target.value)} placeholder="e.g. Sunset coastal escape"/></label>
         <div className="catalog-form-row"><label>Partner<select value={form.partner} onChange={event => update('partner', event.target.value)}><option value="">Select an approved partner</option>{partners.map(partner => <option key={partner.id} value={partner.name}>{partner.name}</option>)}</select></label><label>Category<select value={form.category} onChange={event => update('category', event.target.value)}>{categories.map(category => <option key={category}>{category}</option>)}</select></label></div>
         <div className="catalog-form-row"><label>Destination<select value={form.destination} onChange={event => update('destination', event.target.value)}><option value="">Select a destination</option>{destinations.map(destination => <option key={destination.id} value={destination.name}>{destination.name}</option>)}</select></label><label>Price (LKR)<input type="number" min="0" value={form.price} onChange={event => update('price', event.target.value)} placeholder="Optional"/></label></div>
-        <label>Image path or URL<input value={form.image} onChange={event => update('image', event.target.value)} placeholder="/destinations/image.jpg"/></label>
+        <label>HTTPS image URL <small>Optional</small><input value={form.image} onChange={event => update('image', event.target.value)} placeholder="https://example.com/image.jpg"/></label>
         {form.image && <div className="catalog-form-image-preview"><img src={form.image} alt="Offer image preview" onError={event => { event.currentTarget.style.display = 'none'; }}/><span><ImageIcon size={12}/> Preview</span></div>}
         <label>Description<textarea rows="4" value={form.description} onChange={event => update('description', event.target.value)} placeholder="Describe the experience travelers will discover..."/></label>
         {error && <div className="catalog-form-error">{error}</div>}
