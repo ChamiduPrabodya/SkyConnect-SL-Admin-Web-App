@@ -1,0 +1,52 @@
+name: Admin CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-build:
+    name: Admin tests and production build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      VITE_FIREBASE_API_KEY: ci-not-a-real-key
+      VITE_FIREBASE_AUTH_DOMAIN: demo-skyconnect.firebaseapp.com
+      VITE_FIREBASE_PROJECT_ID: demo-skyconnect
+      VITE_FIREBASE_STORAGE_BUCKET: demo-skyconnect.appspot.com
+      VITE_FIREBASE_MESSAGING_SENDER_ID: '000000000000'
+      VITE_FIREBASE_APP_ID: '1:000000000000:web:ci'
+      VITE_FIREBASE_USE_EMULATORS: 'true'
+      VITE_FIREBASE_EMULATOR_HOST: 127.0.0.1
+      VITE_AI_API_BASE_URL: http://127.0.0.1:8000
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Run submitted application and route detail tests
+        run: node --test tests/partner-application.test.js tests/flight-route-details.test.js
+      - name: Build admin website with demo configuration
+        run: npm run build
+      - name: Save web build for inspection
+        uses: actions/upload-artifact@v7
+        with:
+          name: admin-web-demo
+          path: dist/
+          if-no-files-found: error
+          retention-days: 3

@@ -15,6 +15,8 @@
   <img src="https://img.shields.io/badge/Status-In%20development-F2B544" alt="In development" />
 </p>
 
+<p align="center"><a href="https://github.com/ChamiduPrabodya/SkyConnect-SL-Admin-Web-App/actions/workflows/ci.yml"><img src="https://github.com/ChamiduPrabodya/SkyConnect-SL-Admin-Web-App/actions/workflows/ci.yml/badge.svg?branch=main" alt="Admin CI" /></a></p>
+
 <p align="center">
   <a href="#overview">Overview</a> &middot;
   <a href="#features">Features</a> &middot;
@@ -83,7 +85,7 @@ See [package.json](package.json) and the lockfile for actual dependency ranges.
 Use Node.js **22.13+**, npm, Git and the same Firebase project as the mobile apps.
 
 ```powershell
-git clone --branch feature/new-updates https://github.com/ChamiduPrabodya/SkyConnect-SL-Admin-Web-App.git
+git clone --branch main https://github.com/ChamiduPrabodya/SkyConnect-SL-Admin-Web-App.git
 cd SkyConnect-SL-Admin-Web-App
 npm.cmd ci
 
@@ -169,6 +171,16 @@ SkyConnect-SL-Admin-Web-App/
 |-- public/                      # Branding, catalog images and messaging worker
 `-- tests/                       # Detail-mapping regression tests
 ```
+
+## Continuous integration
+
+[**Admin CI - view workflow runs**](https://github.com/ChamiduPrabodya/SkyConnect-SL-Admin-Web-App/actions/workflows/ci.yml)
+
+The workflow runs for pull requests, pushes to `main` and manual **Run workflow** requests. Submitted application/route helper tests and a demo-configured production web build.
+
+CI uses read-only repository permissions and requires no production Firebase credentials or Vertex keys. New runs cancel older runs for the same branch. Failed steps remain failed and their logs are available in the Actions tab. Web build artifacts use demo configuration and are for inspection, not production deployment.
+
+This workflow does not deploy services, publish mobile apps or change branch protection. Requiring a successful check before merge is a separate GitHub repository setting. Failure email delivery follows each user's GitHub Actions notification settings; it does not broadcast email to every collaborator.
 
 ## Roadmap
 
