@@ -1,0 +1,128 @@
+.theme-toggle{width:35px;height:35px;display:grid;place-items:center;flex-shrink:0;border:1px solid #e9edf3;border-radius:9px;background:#fff;color:#687a90;transition:background .16s,color .16s,border-color .16s}
+.theme-toggle:hover{background:#f4f7fb;color:#326fbd;border-color:#d9e4f0}
+.app-shell[data-theme="dark"]{color-scheme:dark;background:#0c1522;color:#d9e2ed}
+.app-shell[data-theme="dark"] .main-area{background:#0c1522}
+.app-shell[data-theme="dark"] .topbar{background:#111d2b;border-color:#26364a}
+.app-shell[data-theme="dark"] .breadcrumbs{color:#9aa9ba}
+.app-shell[data-theme="dark"] .breadcrumbs strong{color:#e0e8f1}
+.app-shell[data-theme="dark"] .breadcrumbs span{color:#56667b}
+.app-shell[data-theme="dark"] .searchbox{border-color:#29394d;background:#172536;color:#9cabbc}
+.app-shell[data-theme="dark"] .searchbox input{color:#e0e7f0}
+.app-shell[data-theme="dark"] .searchbox input::placeholder{color:#8190a2}
+.app-shell[data-theme="dark"] .searchbox kbd{border-color:#34465b;background:#1a2a3c;color:#9eacbd}
+.app-shell[data-theme="dark"] .icon-button,.app-shell[data-theme="dark"] .theme-toggle{border-color:#304156;background:#172536;color:#afbdcd}
+.app-shell[data-theme="dark"] .icon-button:hover,.app-shell[data-theme="dark"] .theme-toggle:hover{border-color:#426184;background:#20344a;color:#dbe9fa}
+.app-shell[data-theme="dark"] .topbar-user{color:#c0ccda}
+.app-shell[data-theme="dark"] .page-content{color:#d9e2ed}
+.app-shell[data-theme="dark"] .eyebrow{color:#91a1b5}
+.app-shell[data-theme="dark"] .section-title h1,.app-shell[data-theme="dark"] .catalog-title-row h1{color:#e4ebf4}
+.app-shell[data-theme="dark"] .section-title p,.app-shell[data-theme="dark"] .catalog-title-row p{color:#95a3b4}
+.app-shell[data-theme="dark"] .metric-card,.app-shell[data-theme="dark"] .panel,.app-shell[data-theme="dark"] .catalog-card,.app-shell[data-theme="dark"] .package-card{border-color:#26374a;background:#142131;box-shadow:0 3px 12px #00000012}
+.app-shell[data-theme="dark"] .metric-top{color:#a0adbd}
+.app-shell[data-theme="dark"] .metric-value{color:#e3ebf4}
+.app-shell[data-theme="dark"] .metric-bottom{color:#8493a5}
+.app-shell[data-theme="dark"] .panel-heading h3,.app-shell[data-theme="dark"] .settings-heading h3{color:#dce5ef}
+.app-shell[data-theme="dark"] .panel-heading p,.app-shell[data-theme="dark"] .settings-heading p{color:#91a0b1}
+.app-shell[data-theme="dark"] .select-like,.app-shell[data-theme="dark"] .button-secondary{border-color:#33455a;background:#1a2a3d;color:#c0ccda}
+.app-shell[data-theme="dark"] .select-like:hover,.app-shell[data-theme="dark"] .button-secondary:hover{border-color:#49627d;background:#23374d}
+.app-shell[data-theme="dark"] .text-button{color:#83b6f2}
+.app-shell[data-theme="dark"] .chart-legend{color:#a0adbd}
+.app-shell[data-theme="dark"] .chart-legend strong{color:#dce5ef}
+.app-shell[data-theme="dark"] th{border-color:#26374a;background:#182638;color:#a1afbf}
+.app-shell[data-theme="dark"] td{border-color:#26374a;color:#b4c0ce}
+.app-shell[data-theme="dark"] tbody tr:hover{background:#192a3d}
+.app-shell[data-theme="dark"] .partner-cell strong,.app-shell[data-theme="dark"] .offer-cell strong{color:#dfe7f0}
+.app-shell[data-theme="dark"] .partner-cell small,.app-shell[data-theme="dark"] .offer-cell small{color:#8d9bad}
+.app-shell[data-theme="dark"] .location-cell{color:#a3b0bf}
+.app-shell[data-theme="dark"] .more-btn,.app-shell[data-theme="dark"] .row-actions button{border-color:#35475c;background:#1a2b3e;color:#aebaca}
+.app-shell[data-theme="dark"] .row-actions .approve-btn{border-color:#265242;background:#17382f;color:#6bd0ae}
+.app-shell[data-theme="dark"] .row-actions .reject-btn{border-color:#5a3e49;background:#38252e;color:#e28d91}
+.app-shell[data-theme="dark"] .filter-tabs{background:#182638}
+.app-shell[data-theme="dark"] .filter-tabs button{color:#a0adbd}
+.app-shell[data-theme="dark"] .filter-tabs button.selected{background:#263b52;color:#b5d4fc;box-shadow:none}
+.app-shell[data-theme="dark"] .result-count,.app-shell[data-theme="dark"] .muted{color:#8d9bad}
+.app-shell[data-theme="dark"] .filter-row>.button-secondary{background:#182638}
+.app-shell[data-theme="dark"] .page-footnote{color:#9ba9b9}
+.app-shell[data-theme="dark"] .insight-note,.app-shell[data-theme="dark"] .security-callout{border-color:#2a4159;background:#172b40}
+.app-shell[data-theme="dark"] .insight-note strong,.app-shell[data-theme="dark"] .security-callout strong{color:#c4dcfa}
+.app-shell[data-theme="dark"] .insight-note p,.app-shell[data-theme="dark"] .security-callout p{color:#9eb0c4}
+.app-shell[data-theme="dark"] .empty-note{border-color:#514633;background:#2b261e;color:#d0b789}
+.app-shell[data-theme="dark"] .empty-state{color:#9ba9b9}
+.app-shell[data-theme="dark"] .empty-state strong{color:#d0dbe7}
+.app-shell[data-theme="dark"] .footer{border-color:#26374a;background:#0f1b29;color:#8796a8}
+.app-shell[data-theme="dark"] .setup-banner{border-color:#57472c;background:#2b261d}
+.app-shell[data-theme="dark"] .setup-banner strong{color:#e5c98f}
+.app-shell[data-theme="dark"] .setup-banner p{color:#bca777}
+.app-shell[data-theme="dark"] .setup-banner code{background:#45371f;color:#f1d7a4}
+.app-shell[data-theme="dark"] .preview-pill{background:#463820;color:#e0c17e}
+.app-shell[data-theme="dark"] .notification-pop{border-color:#304258;background:#162536;color:#e0e8f1;box-shadow:0 12px 35px #0005}
+.app-shell[data-theme="dark"] .notification-pop p{color:#a2b0c0}
+.app-shell[data-theme="dark"] .notification-pop button{color:#83b6f2}
+.app-shell[data-theme="dark"] .button-primary{border-color:#3978d4;background:#3177d2;color:#fff}
+.app-shell[data-theme="dark"] .badge-pending{background:#49381d;color:#edbd6c}
+.app-shell[data-theme="dark"] .badge-approved,.app-shell[data-theme="dark"] .badge-published{background:#183c32;color:#6cd2a4}
+.app-shell[data-theme="dark"] .badge-rejected{background:#48272d;color:#f08c91}
+.app-shell[data-theme="dark"] .table-panel>.panel-heading{background:#142131}
+.app-shell[data-theme="dark"] .category-chip{background:#25364a;color:#b1c1d2}
+.app-shell[data-theme="dark"] .catalog-tabs{border-color:#2b3c50;background:#182638}
+.app-shell[data-theme="dark"] .catalog-tabs button{color:#a4b1c1}
+.app-shell[data-theme="dark"] .catalog-tabs button.selected{background:#263b52;color:#bad8ff;box-shadow:none}
+.app-shell[data-theme="dark"] .catalog-tabs button span{background:#33455a;color:#b4c2d1}
+.app-shell[data-theme="dark"] .catalog-tabs button.selected span{background:#315075;color:#d1e4fb}
+.app-shell[data-theme="dark"] .catalog-categories button{border-color:#304258;background:#172638;color:#abb9c9}
+.app-shell[data-theme="dark"] .catalog-categories button.selected{border-color:#42648a;background:#213750;color:#c3ddfa}
+.app-shell[data-theme="dark"] .catalog-image,.app-shell[data-theme="dark"] .package-image{background:#27394b}
+.app-shell[data-theme="dark"] .catalog-card-heading h2{color:#e0e8f1}
+.app-shell[data-theme="dark"] .catalog-card-heading>span{color:#8bbaf2}
+.app-shell[data-theme="dark"] .catalog-card-heading small,.app-shell[data-theme="dark"] .catalog-card-body>p{color:#9caabb}
+.app-shell[data-theme="dark"] .catalog-card-kicker,.app-shell[data-theme="dark"] .catalog-card-foot{color:#9aa9ba}
+.app-shell[data-theme="dark"] .catalog-category,.app-shell[data-theme="dark"] .package-duration{border-color:#536477;background:#1c2d40ed;color:#d2deeb}
+.app-shell[data-theme="dark"] .catalog-card-actions button{border-color:#536477;background:#182a3ded;color:#d4deea}
+.app-shell[data-theme="dark"] .catalog-card-foot,.app-shell[data-theme="dark"] .package-destinations,.app-shell[data-theme="dark"] .package-includes{border-color:#2a3b50}
+.app-shell[data-theme="dark"] .attraction-list>strong,.app-shell[data-theme="dark"] .package-destinations>strong,.app-shell[data-theme="dark"] .package-includes>strong{color:#c0ccda}
+.app-shell[data-theme="dark"] .attraction-list>span{color:#a2b0c0}
+.app-shell[data-theme="dark"] .package-destinations span{background:#263c54;color:#bfd5ef}
+.app-shell[data-theme="dark"] .package-includes span{background:#1f403a;color:#9bd7c4}
+.app-shell[data-theme="dark"] .package-destinations em{color:#9aa9ba}
+.app-shell[data-theme="dark"] .catalog-note{border-color:#2b4159;background:#17293c;color:#a5b6c9}
+.app-shell[data-theme="dark"] .catalog-editor,.app-shell[data-theme="dark"] .review-modal{border-color:#304258;background:#142131;color:#dce5ef}
+.app-shell[data-theme="dark"] .catalog-editor>header,.app-shell[data-theme="dark"] .review-modal-header{border-color:#2b3c50;background:linear-gradient(135deg,#142131 55%,#182a3c)}
+.app-shell[data-theme="dark"] .catalog-editor>header h2,.app-shell[data-theme="dark"] .review-partner-heading h2{color:#e3ebf4}
+.app-shell[data-theme="dark"] .catalog-editor>header>button,.app-shell[data-theme="dark"] .review-close{border-color:#35485d;background:#1b2d40;color:#bbc8d6}
+.app-shell[data-theme="dark"] .catalog-editor-body>label,.app-shell[data-theme="dark"] .catalog-form-row>label{color:#b9c5d2}
+.app-shell[data-theme="dark"] .catalog-editor input:not([type=checkbox]),.app-shell[data-theme="dark"] .catalog-editor select,.app-shell[data-theme="dark"] .catalog-editor textarea{border-color:#35485d;background:#192a3d;color:#dce5ef}
+.app-shell[data-theme="dark"] .catalog-editor input::placeholder,.app-shell[data-theme="dark"] .catalog-editor textarea::placeholder{color:#8191a4}
+.app-shell[data-theme="dark"] .catalog-editor form>footer,.app-shell[data-theme="dark"] .review-modal-footer{border-color:#2b3c50;background:#111f2e}
+.app-shell[data-theme="dark"] .destination-picker{border-color:#35485d}
+.app-shell[data-theme="dark"] .destination-picker legend,.app-shell[data-theme="dark"] .destination-picker label{border-color:#35485d;color:#c3cfdb}
+.app-shell[data-theme="dark"] .destination-picker label{background:#192a3d}
+.app-shell[data-theme="dark"] .destination-picker label small{color:#99a9ba}
+.app-shell[data-theme="dark"] .catalog-form-image-preview{border-color:#35485d;background:#1b2d40}
+.app-shell[data-theme="dark"] .catalog-form-image-preview span{background:#17283be8;color:#c1cfde}
+.app-shell[data-theme="dark"] .catalog-form-error{border-color:#603a40;background:#38252c;color:#f0a3a6}
+.app-shell[data-theme="dark"] .offer-review-note{border-color:#33485e;background:#192b3e;color:#a8b8c9}
+.app-shell[data-theme="dark"] .offer-review-note strong{color:#c0daf7}
+.app-shell[data-theme="dark"] .review-section{border-color:#2b3c50}
+.app-shell[data-theme="dark"] .review-section h3{color:#d1dce8}
+.app-shell[data-theme="dark"] .review-partner-heading p,.app-shell[data-theme="dark"] .review-helper{color:#9baabc}
+.app-shell[data-theme="dark"] .review-field{border-color:#2f4257;background:#18283a}
+.app-shell[data-theme="dark"] .review-field>span{color:#96a6b8}
+.app-shell[data-theme="dark"] .review-field>strong{color:#d2dce7}
+.app-shell[data-theme="dark"] .review-submitted{color:#a2b0c0}
+.app-shell[data-theme="dark"] .review-submitted strong{color:#d0dbe6}
+.app-shell[data-theme="dark"] .review-demo-note{border-color:#5a4b31;background:#2b281f;color:#d8c18f}
+.app-shell[data-theme="dark"] .review-reject{border-color:#603a40;background:#38252c;color:#f0a3a6}
+.app-shell[data-theme="dark"] .route-count{background:#263f5d;color:#b4d1f5}
+.app-shell[data-theme="dark"] .airline-route-card,.app-shell[data-theme="dark"] .route-cabin-table{border-color:#2f4257}
+.app-shell[data-theme="dark"] .airline-route-header{border-color:#2f4257;background:#192b3e;color:#d1dce8}
+.app-shell[data-theme="dark"] .airline-route-header>span{color:#a7b9cf}
+.app-shell[data-theme="dark"] .route-overview{border-color:#2f4257;background:#16283b}
+.app-shell[data-theme="dark"] .route-overview>div>strong{color:#c0daf7}
+.app-shell[data-theme="dark"] .route-overview>div>span,.app-shell[data-theme="dark"] .route-overview p,.app-shell[data-theme="dark"] .route-fixed-note{color:#a2b4c8}
+.app-shell[data-theme="dark"] .route-detail-section{border-color:#2f4257}
+.app-shell[data-theme="dark"] .route-detail-section h4,.app-shell[data-theme="dark"] .route-cabin-table tbody th,.app-shell[data-theme="dark"] .route-empty strong{color:#c6d6e9}
+.app-shell[data-theme="dark"] .route-cabin-table tbody th{border-color:#29394c}
+.app-shell[data-theme="dark"] .route-empty{border-color:#35485d;color:#a2b4c8}
+.app-shell[data-theme="dark"] .hotel-review-facilities>span,.app-shell[data-theme="dark"] .hotel-review-photo,.app-shell[data-theme="dark"] .review-document-list li{border-color:#35485d;background:#18283a;color:#bccde1}
+.app-shell[data-theme="dark"] .toast{border-color:#285444;background:#14372e;color:#9ce0c5}
+@media(max-width:700px){.theme-toggle{width:33px;height:33px}}

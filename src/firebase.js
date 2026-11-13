@@ -1,6 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -18,3 +18,10 @@ const app = firebaseConfigured
 
 export const auth = app ? getAuth(app) : null;
 export const db = app ? getFirestore(app) : null;
+
+if (app && import.meta.env.VITE_FIREBASE_USE_EMULATORS === 'true' && !globalThis.__skyconnectAdminEmulatorsConnected) {
+ const host = import.meta.env.VITE_FIREBASE_EMULATOR_HOST || '127.0.0.1';
+ connectAuthEmulator(auth, `http://${host}:9099`, {disableWarnings:true});
+ connectFirestoreEmulator(db, host, 8080);
+ globalThis.__skyconnectAdminEmulatorsConnected = true;
+}
