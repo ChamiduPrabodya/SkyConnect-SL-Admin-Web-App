@@ -1,4 +1,38 @@
 .review-overlay{position:fixed;inset:0;z-index:110;display:flex;align-items:center;justify-content:center;padding:24px;background:#10203380;backdrop-filter:blur(3px)}
+.flight-route-overlay{background:rgba(7,12,33,.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.flight-route-modal{width:min(820px,100%)}
+.flight-review-heading{display:flex;align-items:center;gap:13px;margin-top:18px}
+.flight-review-heading>div{flex:1;min-width:0}
+.flight-review-heading h2{margin:0;font:800 24px Manrope,sans-serif;color:inherit}
+.flight-review-heading p{margin:4px 0 0;color:#73849b;font-size:12px}
+.flight-review-icon{display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:#e8f1ff;color:#386ec1}
+.flight-request-date{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:15px;color:#73849b;font-size:11px}
+.flight-request-date time{font-weight:600;color:#405875}
+.flight-airports{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-bottom:22px}
+.flight-airport{min-width:0;padding:18px;background:#f4f8ff;border:1px solid #e3ebf7;border-radius:12px}
+.flight-airport>span{display:block;color:#74849a;font-size:10px;text-transform:uppercase;letter-spacing:.8px}
+.flight-airport>strong{display:block;margin-top:8px;color:#24558f;font:800 28px Manrope,sans-serif}
+.flight-airport p{margin:6px 0;color:#405875;font-size:12px;line-height:1.5}
+.flight-airport small{color:#73849b;line-height:1.5}
+.flight-airports-arrow{position:absolute;top:45%;left:calc(50% - 15px);background:#fff;border:1px solid #e3ebf7;border-radius:50%;padding:5px;box-sizing:content-box;color:#4977b2}
+.flight-route-row{cursor:pointer}
+.flight-route-row td>small{display:block;margin-top:4px;opacity:.8}
+.flight-route-row:focus-visible{outline:2px solid #3e7ac8;outline-offset:-2px}
+.flight-route-cell{display:flex;align-items:center;gap:10px}
+.flight-route-cell .offer-thumb{flex-shrink:0;width:34px;height:34px}
+.flight-route-cell small{display:block;max-width:140px;overflow:hidden;text-overflow:ellipsis}
+.flight-fare-table{overflow-x:auto;border:1px solid #e3ebf7;border-radius:10px}
+.flight-fare-table table{min-width:0;width:100%}
+.flight-fare-table th,.flight-fare-table td{padding:12px;font-size:11px;white-space:normal}
+.flight-fare-table tbody th{font-weight:600;background:transparent;text-transform:none;letter-spacing:0}
+.flight-review-error{padding:12px;border:1px solid #f0d8da;border-radius:9px;color:#b84a62;font-size:12px}
+.app-shell[data-theme="dark"] .flight-airport{background:#18283a;border-color:#2f4257}
+.app-shell[data-theme="dark"] .flight-airport>strong{color:#c0daf7}
+.app-shell[data-theme="dark"] .flight-airport p,.app-shell[data-theme="dark"] .flight-request-date time{color:#d2dce7}
+.app-shell[data-theme="dark"] .flight-airport>span,.app-shell[data-theme="dark"] .flight-airport small,.app-shell[data-theme="dark"] .flight-review-heading p,.app-shell[data-theme="dark"] .flight-request-date{color:#9baabc}
+.app-shell[data-theme="dark"] .flight-review-icon,.app-shell[data-theme="dark"] .flight-airports-arrow{background:#263f5d;border-color:#2f4257;color:#b4d1f5}
+.app-shell[data-theme="dark"] .flight-fare-table{border-color:#2f4257}
+@media(max-width:420px){.flight-review-heading{flex-wrap:wrap}.flight-review-heading h2{font-size:20px}.flight-airports{gap:12px}.flight-airport{padding:12px}.flight-airport>strong{font-size:24px}.flight-fare-table th,.flight-fare-table td{padding:9px 7px;font-size:10px}}
 .review-modal{display:flex;flex-direction:column;width:min(760px,100%);max-height:min(90vh,850px);overflow:hidden;background:#fff;border:1px solid #e6ebf1;border-radius:16px;box-shadow:0 24px 80px #10203340;animation:review-enter .18s ease-out}
 .review-modal-header{padding:23px 26px 19px;border-bottom:1px solid #edf1f5;background:linear-gradient(135deg,#fff 55%,#f5f9ff)}
 .review-eyebrow{display:flex;align-items:center;justify-content:space-between}
@@ -21,7 +55,9 @@
 .review-website{display:flex!important;align-items:center;gap:6px}
 .review-website svg{color:#6c88ae;flex-shrink:0}
 .review-helper{margin:10px 0 0;color:#8794a4;font-size:9px;line-height:1.6}
-.review-submitted{display:flex;align-items:center;gap:7px;margin:0 0 14px;color:#788698;font-size:10px}
+.review-submitted{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin:0 0 14px;color:#788698;font-size:11px}
+.application-date{display:block;white-space:nowrap}
+.application-date small{display:block;margin-top:4px}
 .review-submitted svg{color:#7893b6}
 .review-submitted strong{color:#465a72;font-weight:600}
 .review-demo-note{display:flex;align-items:flex-start;gap:8px;padding:11px 12px;border:1px solid #f0e5ca;border-radius:8px;background:#fffaf0;color:#8b7248;font-size:9px;line-height:1.6}

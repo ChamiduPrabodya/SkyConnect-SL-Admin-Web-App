@@ -13,9 +13,11 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { createRecord, persistStatus } from './firestoreService.js';
 import CatalogPage from './CatalogPage.jsx';
 import TripsPage from './TripsPage.jsx';
+import RoutesPage from './FlightRoutesPage.jsx';
 import OfferForm from './OfferForm.jsx';
-import AirlineRouteReview, { RouteField } from './AirlineRouteReview.jsx';
-import { AirlineProfile, HotelProfile, RegistrationDetails } from './PartnerProfiles.jsx';
+import { RouteField } from './AirlineRouteReview.jsx';
+import { AirlineRegistrationDetails, HotelProfile, RegistrationDetails } from './PartnerProfiles.jsx';
+import { formatPartnerSubmission, sortPartnerApplications } from './partnerApplication.js';
 import { firebaseConfigured, db, auth } from './firebase.js';
 import { collection, onSnapshot, doc, setDoc, collectionGroup, query, where } from 'firebase/firestore';
 
@@ -156,8 +158,8 @@ export default function App() {
   }, []);
 
   const changeStatus = async (name, id, status) => {
-    try { await persistStatus(name, id, status); setActivePartner(null); notify(`Saved ${status.toLowerCase()} status.`); }
-    catch (error) { notify(`Update failed: ${error.message}`); }
+    try { await persistStatus(name, id, status); setActivePartner(null); notify(`Saved ${status.toLowerCase()} status.`); return true; }
+    catch (error) { notify(`Update failed: ${error.message}`); return false; }
   };
   const changePartnerStatus = (id, status) => changeStatus('partners', id, status);
   const changeOfferStatus = (id, status) => changeStatus('offers', id, status);
@@ -217,16 +219,7 @@ export default function App() {
       const str = `${r.flightNo || ''} ${r.airlineName || ''} ${r.origin?.code || ''} ${r.origin?.city || ''} ${r.destination?.code || ''} ${r.destination?.city || ''}`.toLowerCase();
       return matchFilter && str.includes(search.toLowerCase());
     });
-    return list.sort((a, b) => {
-      const timeA = a.createdAt || a.submittedAt ? new Date(a.createdAt || a.submittedAt).getTime() : 0;
-      const timeB = b.createdAt || b.submittedAt ? new Date(b.createdAt || b.submittedAt).getTime() : 0;
-      if (timeA && timeB && timeA !== timeB) return timeB - timeA;
-      if (timeA && !timeB) return -1;
-      if (!timeA && timeB) return 1;
-      const numA = typeof a.id === 'string' ? parseInt(a.id.replace(/\D/g, ''), 10) || 0 : 0;
-      const numB = typeof b.id === 'string' ? parseInt(b.id.replace(/\D/g, ''), 10) || 0 : 0;
-      return numB - numA;
-    });
+    return list;
   }, [routes, routeFilter, search]);
 
   const go = (id) => { setPage(id); setMobileOpen(false); setSearch(''); };
@@ -272,7 +265,7 @@ function Overview({ users, partners, offers, routes, go, notify, onView }) {
     <div className="metric-grid"><Metric label="Total users" value={String(users.length)} change="N/A" icon={Users} tint="tint-blue"/><Metric label="Verified partners" value={String(partners.filter(p=>p.status==='Approved').length)} change="N/A" icon={ShieldCheck} tint="tint-green"/><Metric label="Published offers" value={String(published)} change="N/A" icon={Compass} tint="tint-purple"/><Metric label="Pending reviews" value={String(totalPending)} change={`${pendingRoutes} routes · ${pendingOffers} offers`} direction="down" icon={Clock3} tint="tint-orange"/></div>
     <div className="dashboard-grid"><section className="panel engagement-panel"><div className="panel-heading"><div><h3>Discovery activity</h3><p>Explore views and saves across the platform</p></div><button className="select-like" onClick={() => notify('Showing the last 7 days.')}>Last 7 days <ChevronDown size={14}/></button></div><div className="chart-legend"><span><i className="legend-blue"/> Views <strong>Not tracked</strong></span><span><i className="legend-teal"/> Saves <strong>{chartData.reduce((sum,day)=>sum+day.saves,0)}</strong></span></div><div className="chart-wrap"><ResponsiveContainer width="100%" height="100%"><AreaChart data={chartData} margin={{top:10,right:4,left:-22,bottom:0}}><defs><linearGradient id="viewsFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#638cf6" stopOpacity={0.18}/><stop offset="95%" stopColor="#638cf6" stopOpacity={0}/></linearGradient></defs><CartesianGrid stroke="#edf1f6" vertical={false}/><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill:'#8994a5',fontSize:12}} dy={9}/><YAxis axisLine={false} tickLine={false} tick={{fill:'#8994a5',fontSize:11}}/><Tooltip contentStyle={{borderRadius:12,border:'1px solid #e8edf4',boxShadow:'0 8px 24px #14233a12'}}/><Area type="monotone" dataKey="visitors" name="Views" stroke="#638cf6" strokeWidth={2.5} fill="url(#viewsFill)"/><Area type="monotone" dataKey="saves" name="Saves" stroke="#2ab6a4" strokeWidth={2.5} fill="transparent"/></AreaChart></ResponsiveContainer></div></section>
     <section className="panel activity-panel"><div className="panel-heading"><div><h3>Recent activity</h3><p>Latest updates from your workspace</p></div><button className="text-button" onClick={() => go('Offers & experiences')}>View all <ArrowUpRight size={14}/></button></div><div className="activity-list">{activity.map((a,i)=><div className="activity-item" key={i}><div className={`activity-icon ${a.tone}`}>{a.icon==='partner'?<Building2 size={16}/>:a.icon==='offer'?<Compass size={16}/>:a.icon==='check'?<Check size={16}/>:<ChartNoAxesCombined size={16}/>}</div><div className="activity-text"><strong>{a.title}</strong><p>{a.detail}</p><small>{a.time}</small></div></div>)}</div></section></div>
-    <section className="panel table-panel"><div className="panel-heading"><div><h3>Partner applications</h3><p>Open each application to check its profile before deciding</p></div><button className="text-button" onClick={() => go('Partner verification')}>View applications <ArrowUpRight size={14}/></button></div><PartnerReviewTable partners={partners.filter(p=>p.status==='Pending').slice(0,3)} onView={onView} compact/></section>
+    <section className="panel table-panel"><div className="panel-heading"><div><h3>Partner applications</h3><p>Open each application to check its profile before deciding</p></div><button className="text-button" onClick={() => go('Partner verification')}>View applications <ArrowUpRight size={14}/></button></div><PartnerReviewTable partners={sortPartnerApplications(partners.filter(p=>p.status==='Pending')).slice(0,3)} onView={onView} compact/></section>
     <div className="insight-note"><div className="insight-spark"><Sparkles size={18}/></div><div><strong>Travel discovery insight</strong><p>Nature and coastal experiences are strong categories to feature. Keep partner listings current so travelers see relevant local options.</p></div><button onClick={() => go('Trend insights')}>View insights <ArrowUpRight size={14}/></button></div>
   </>;
 }
@@ -301,109 +294,26 @@ export function PartnerPage({ partners, filter, setFilter, onView }) {
 function PartnerTable({ partners, onStatus, compact=false }) {
   return <div className="table-scroll"><table><thead><tr><th>PARTNER</th><th>TYPE</th><th>LOCATION</th><th>STATUS</th><th>{compact?'ACTIONS':'SUBMITTED'}</th></tr></thead><tbody>{partners.map(p=><tr key={p.id}><td><div className="partner-cell"><Avatar initials={p.initials} color={p.color}/><div><strong>{p.name}</strong><small>{p.id}</small></div></div></td><td>{p.type}</td><td><span className="location-cell"><MapPin size={13}/>{p.location}</span></td><td><Badge status={p.status.toLowerCase()}>{p.status}</Badge></td><td>{p.status==='Pending'?<div className="row-actions"><button className="approve-btn" title="Approve" onClick={()=>onStatus(p.id,'Approved')}><Check size={15}/></button><button className="reject-btn" title="Reject" onClick={()=>onStatus(p.id,'Rejected')}><X size={15}/></button><button className="more-btn" title="View details" onClick={()=>onStatus(p.id,'Pending')}><Eye size={15}/></button></div>:compact?<span className="muted">—</span>:<button className="more-btn" onClick={()=>onStatus(p.id,'Pending')}><Eye size={15}/> Review again</button>}</td></tr>)}</tbody></table>{partners.length===0&&<div className="empty-state"><ClipboardCheck size={24}/><strong>No partners found</strong><span>Try another filter or search term.</span></div>}</div>;
 }
-function RoutesPage({ routes, filter, setFilter, onStatus, notify }) {
-  return <>
-    <SectionTitle
-      eyebrow="AVIATION & AIRLINE OPERATIONS"
-      title="Flight routes & slots"
-      description="Review and clear airline flight schedules & slot approvals in compliance with CAASL."
-      action={<button className="button button-secondary" onClick={()=>window.print()}><Download size={16}/> Export schedules</button>}
-    />
-    <div className="filter-row">
-      <div className="filter-tabs">
-        {['All', 'Pending', 'Approved', 'Rejected'].map(s => (
-          <button className={filter === s ? 'selected' : ''} key={s} onClick={() => setFilter(s)}>{s}</button>
-        ))}
-      </div>
-      <span className="result-count">{routes.length} flight schedules</span>
-    </div>
-    <section className="panel table-panel">
-      <div className="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>FLIGHT NO</th>
-              <th>ROUTE (SECTOR)</th>
-              <th>AIRLINE</th>
-              <th>SCHEDULE / AIRCRAFT</th>
-              <th>STATUS</th>
-              <th>ACTIONS</th>
-            </tr>
-          </thead>
-          <tbody>
-            {routes.map(r => {
-              const orig = r.origin?.code || 'CMB';
-              const origCity = r.origin?.city || '';
-              const dest = r.destination?.code || 'DXB';
-              const destCity = r.destination?.city || '';
-              const isPending = r.status === 'pending' || r.status === 'Pending';
-              const isApproved = r.status === 'approved' || r.status === 'active';
-              return (
-                <tr key={r.id}>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div className="offer-thumb adventure" style={{ width: 34, height: 34, borderRadius: 8 }}>
-                        <Plane size={16} />
-                      </div>
-                      <div>
-                        <strong>{r.flightNo || 'UL-000'}</strong>
-                        <small>{r.id}</small>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <span style={{ fontWeight: 700, color: '#1e293b' }}>
-                      {orig} ({origCity}) ➔ {dest} ({destCity})
-                    </span>
-                  </td>
-                  <td>{r.airlineName || 'Sri Lankan Airline'}</td>
-                  <td>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <span>{r.aircraft || 'Airbus A320'} · {r.frequency || 'Daily'}</span>
-                      <small style={{ color: '#64748b' }}>{r.departureTime || '08:30'} – {r.arrivalTime || '13:00'}</small>
-                    </div>
-                  </td>
-                  <td>
-                    <Badge status={isApproved ? 'approved' : isPending ? 'pending' : 'rejected'}>
-                      {isApproved ? 'Approved (CAASL Cleared)' : isPending ? 'Pending Review' : 'Rejected'}
-                    </Badge>
-                  </td>
-                  <td>
-                    {isPending ? (
-                      <div className="row-actions">
-                        <button className="approve-btn" title="Approve & Clear Slot" onClick={() => onStatus(r.id, 'approved')}>
-                          <Check size={15} />
-                        </button>
-                        <button className="reject-btn" title="Reject Slot" onClick={() => onStatus(r.id, 'rejected')}>
-                          <X size={15} />
-                        </button>
-                      </div>
-                    ) : (
-                      <button className="more-btn" onClick={() => onStatus(r.id, 'pending')}>
-                        <Eye size={15} /> Re-review
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        {routes.length === 0 && <div className="empty-state">No flight routes match this filter.</div>}
-      </div>
-    </section>
-    <div className="insight-note">
-      <div className="insight-spark"><ShieldCheck size={18}/></div>
-      <div>
-        <strong>CAASL Slot & Regulatory Compliance</strong>
-        <p>Flight schedules approved here automatically update the partner airline console and publish route discovery to global travelers.</p>
-      </div>
-    </div>
-  </>;
+function PartnerReviewTable({ partners, onView, compact=false }) {
+  return <div className="table-scroll"><table>
+    <thead><tr><th>PARTNER</th><th>TYPE</th><th>LOCATION</th><th>REQUEST DATE</th><th>STATUS</th><th>{compact?'REVIEW':'APPLICATION'}</th></tr></thead>
+    <tbody>{sortPartnerApplications(partners).map(p=><tr key={p.id}>
+      <td><div className="partner-cell"><Avatar initials={p.initials} color={p.color}/><div><strong>{p.name}</strong><small>{p.id}</small></div></div></td>
+      <td>{p.type}</td>
+      <td><span className="location-cell"><MapPin size={13}/>{p.location}</span></td>
+      <td><ApplicationSubmittedAt partner={p} compact/></td>
+      <td><Badge status={p.status.toLowerCase()}>{p.status}</Badge></td>
+      <td><button className="more-btn" onClick={()=>onView(p)}><Eye size={14}/>{p.status==='Pending'?'Review details':'View details'}</button></td>
+    </tr>)}</tbody>
+  </table>{partners.length===0&&<div className="empty-state"><ClipboardCheck size={24}/><strong>No partners found</strong><span>Try another filter or search term.</span></div>}</div>;
 }
 
-function PartnerReviewTable({ partners, onView, compact=false }) {
-  return <div className="table-scroll"><table><thead><tr><th>PARTNER</th><th>TYPE</th><th>LOCATION</th><th>STATUS</th><th>{compact?'REVIEW':'APPLICATION'}</th></tr></thead><tbody>{partners.map(p=><tr key={p.id}><td><div className="partner-cell"><Avatar initials={p.initials} color={p.color}/><div><strong>{p.name}</strong><small>{p.id}</small></div></div></td><td>{p.type}</td><td><span className="location-cell"><MapPin size={13}/>{p.location}</span></td><td><Badge status={p.status.toLowerCase()}>{p.status}</Badge></td><td><button className="more-btn" onClick={()=>onView(p)}><Eye size={14}/>{p.status==='Pending'?'Review details':'View details'}</button></td></tr>)}</tbody></table>{partners.length===0&&<div className="empty-state"><ClipboardCheck size={24}/><strong>No partners found</strong><span>Try another filter or search term.</span></div>}</div>;
+function ApplicationSubmittedAt({ partner, compact = false }) {
+  const submitted = formatPartnerSubmission(partner);
+  if (!submitted) return <span>Date not recorded</span>;
+  return <time className={compact ? 'application-date' : undefined} dateTime={submitted.dateTime} title="Sri Lanka time (UTC+05:30)">
+    {submitted.date}{compact ? <small>{submitted.time} SL</small> : ` · ${submitted.time} (Sri Lanka)`}
+  </time>;
 }
 
 function ReviewField({ label, value }) {
@@ -411,19 +321,21 @@ function ReviewField({ label, value }) {
 }
 
 export function PartnerReviewModal({ partner, onClose, onStatus }) {
+  const isAirline = getPartnerSection(partner) === 'airline';
   return <div className="review-overlay" onMouseDown={onClose}>
     <section className="review-modal" role="dialog" aria-modal="true" aria-labelledby="review-title" onMouseDown={event=>event.stopPropagation()}>
       <div className="review-modal-header">
         <div className="review-eyebrow"><span className="eyebrow">PARTNER APPLICATION · {partner.id}</span><button className="review-close" aria-label="Close review" onClick={onClose}><X size={18}/></button></div>
-        <div className="review-partner-heading"><Avatar initials={partner.initials} color={partner.color}/><div><h2 id="review-title">{partner.name}</h2><p>{partner.type} partner · {partner.location}</p></div><Badge status={partner.status.toLowerCase()}>{partner.status}</Badge></div>
+        <div className="review-partner-heading"><Avatar initials={partner.initials} color={partner.color}/><div><h2 id="review-title">{partner.name}</h2><p>{partner.type} partner{(isAirline ? partner.country || partner.hqCountry : partner.location) ? ` · ${isAirline ? partner.country || partner.hqCountry : partner.location}` : ''}</p></div><Badge status={partner.status.toLowerCase()}>{partner.status}</Badge></div>
       </div>
       <div className="review-modal-body">
+        <div className="review-submitted"><CalendarDays size={15}/> Application submitted <strong><ApplicationSubmittedAt partner={partner}/></strong></div>
+        {isAirline ? <AirlineRegistrationDetails partner={partner}/> : <>
         <div className="review-section"><h3><Building2 size={16}/> Business profile</h3><div className="review-fields"><ReviewField label="Registered business name" value={partner.name}/><ReviewField label="Business registration" value={partner.businessRegistration}/><ReviewField label="Country" value={partner.country}/><ReviewField label="Business address" value={partner.location}/><div className="review-field review-field-wide"><span>About the business</span><strong>{partner.description || 'Not provided'}</strong></div></div></div>
         <div className="review-section"><h3><Mail size={16}/> Contact details</h3><div className="review-fields"><ReviewField label="Contact person" value={partner.contactName}/><ReviewField label="Email" value={partner.email}/><ReviewField label="Phone" value={partner.phone}/><div className="review-field"><span>Website</span><strong className="review-website"><Globe size={13}/>{partner.website || 'Not provided'}</strong></div></div></div>
-        {partner.type==='Airline' && <><AirlineProfile partner={partner}/><AirlineRouteReview routes={partner.routes}/></>}
         {partner.type==='Hotel' && <HotelProfile hotel={partner.hotelDetails}/>}
         <RegistrationDetails partner={partner}/>
-        <div className="review-submitted"><CalendarDays size={15}/> Application submitted <strong>{partner.submittedAt || 'Date not provided'}</strong></div>
+        </>}
         <div className="review-demo-note"><AlertCircle size={15}/> Review submitted information before approval. Independent verification requires checking the original documents.</div>
       </div>
       <div className="review-modal-footer"><button className="button button-secondary" onClick={onClose}>Close</button>{partner.status==='Pending' && <div><button className="button review-reject" onClick={()=>onStatus(partner.id,'Rejected')}><X size={15}/> Reject application</button><button className="button button-primary" onClick={()=>onStatus(partner.id,'Approved')}><Check size={15}/> Approve partner</button></div>}</div>

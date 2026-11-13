@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
-import { Building2, FileText, Image as ImageIcon, Plane, Wifi } from 'lucide-react';
+import { Building2, FileText, Image as ImageIcon, Mail, Plane, Wifi } from 'lucide-react';
 import { RouteField } from './AirlineRouteReview.jsx';
 
-export function AirlineProfile({ partner }) {
-  return <section className="review-section"><h3><Plane size={16}/> Airline profile</h3><div className="review-fields">
-    <RouteField label="Airline IATA code" value={partner.iataCode}/>
-    <RouteField label="ICAO code" value={partner.icaoCode}/>
-    <RouteField label="Headquarters" value={partner.headquarters}/>
-    <RouteField label="Founded" value={partner.founded}/>
-    <RouteField label="Fleet size" value={partner.fleetSize != null ? `${partner.fleetSize} aircraft` : null}/>
-    <RouteField label="Total flights" value={partner.totalFlights}/>
-    <RouteField label="On-time rate" value={partner.onTimeRate != null ? `${partner.onTimeRate}%` : null}/>
-    <RouteField label="Rating" value={partner.rating != null ? `${partner.rating} / 5` : null}/>
-  </div></section>;
+export function AirlineRegistrationDetails({ partner }) {
+  return <>
+    <section className="review-section"><h3><Plane size={16}/> Airline registration</h3><div className="review-fields">
+      <RouteField label="Airline / Company name" value={partner.name || partner.companyName}/>
+      <RouteField label="IATA code" value={partner.iata || partner.iataCode}/>
+      <RouteField label="AOC / Registration number" value={partner.aoc || partner.registrationNumber}/>
+      <RouteField label="Headquarters country" value={partner.country || partner.hqCountry}/>
+    </div></section>
+    <section className="review-section"><h3><Mail size={16}/> Contact details</h3><div className="review-fields">
+      <RouteField label="Full name" value={partner.contactName || partner.fullName}/>
+      <RouteField label="Email address" value={partner.email}/>
+      <RouteField label="Phone number" value={partner.phone}/>
+    </div></section>
+  </>;
 }
 
 function HotelPhoto({ src, name, index }) {
