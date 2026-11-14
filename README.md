@@ -142,6 +142,12 @@ Partner approval, content publication and provider request confirmation are sepa
 
 ## Testing
 
+### Upload catalog photos
+
+Destination, package and offer forms include a photo file picker alongside the existing HTTPS URL field. JPG, PNG and WebP files up to 8 MB upload through the protected FastAPI endpoint into Cloudinary; save the form afterwards to persist its URL in Firestore. Uploading disables form submission until the URL is ready, and failures leave an actionable error. Only a Firebase account with the signed `admin: true` claim can upload catalog photos.
+
+Set `VITE_MEDIA_API_BASE_URL` to the reachable FastAPI service (default `http://127.0.0.1:8000`); allow this website's origin in backend `CORS_ORIGINS`. Keep Cloudinary keys only in the backend `.env`. Free Cloudinary use does not require Firebase Storage billing. A successful website build does not establish live Cloudinary access; verify an actual upload and saved photo after backend setup. Cancelling a form after an upload may leave an unused asset; automatic orphan cleanup is future work.
+
 ```powershell
 node --test tests/partner-application.test.js tests/flight-route-details.test.js
 npm.cmd run build
